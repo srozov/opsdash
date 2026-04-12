@@ -1,0 +1,16 @@
+[Unit]
+Description=OpsDash — OpenClaw operations dashboard
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/clawdbot-opsdash/opsdash
+ExecStart=%h/.bun/bin/bun run server/index.ts
+Restart=on-failure
+RestartSec=3
+Environment=OPSDASH_PORT=7890
+StandardOutput=append:%h/.opsdash/opsdash.log
+StandardError=append:%h/.opsdash/opsdash.log
+
+[Install]
+WantedBy=default.target
