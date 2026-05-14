@@ -6,6 +6,7 @@ import "./pull-me.ts";
 import "./tabs/tasks.ts";
 import "./tabs/taskflows.ts";
 import "./tabs/cron-jobs.ts";
+import "./tabs/files.ts";
 
 @customElement("ops-dash")
 export class OpsDash extends LitElement {
@@ -66,6 +67,9 @@ export class OpsDash extends LitElement {
         )}
         <ops-cron-jobs .jobs=${this.state.snapshot.cronJobs}></ops-cron-jobs>
       `;
+    }
+    if (tab === "files") {
+      return html`<ops-files></ops-files>`;
     }
     return html`
       ${this.sectionHead("04", "heartbeat", "queued for M2")}

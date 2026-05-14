@@ -3,7 +3,7 @@ import { fetchSnapshot, openEventStream } from "./client.ts";
 import type { Snapshot } from "./client.ts";
 
 export type Mode = "live" | "config";
-export type LiveTab = "tasks" | "taskflows" | "cron-jobs" | "heartbeat";
+export type LiveTab = "tasks" | "taskflows" | "cron-jobs" | "heartbeat" | "files";
 export type ConfigTab = "standing-orders" | "hooks" | "webhooks";
 
 export class OpsState implements ReactiveController {

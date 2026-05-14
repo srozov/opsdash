@@ -1,0 +1,16 @@
+# Secrets
+.deploy_key
+.deploy_key.pub
+
+# Dependencies
+node_modules/
+
+# Build output
+server/public/assets/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

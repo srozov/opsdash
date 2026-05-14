@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { streamSSE } from "hono/streaming";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join, resolve, extname } from "node:path";
@@ -7,6 +7,19 @@ import { listTaskFlows, getTaskFlow } from "./taskflows.ts";
 import { listCronJobs, getCronJob } from "./cron-jobs.ts";
 import { startEventLoop, getSnapshot, subscribe } from "./events.ts";
 import { config } from "./config.ts";
+import {
+  FileSafetyError,
+  deletePath,
+  findFiles,
+  getFilesRoot,
+  getMaxBytes,
+  listDir,
+  makeDir,
+  readFileText,
+  renamePath,
+  searchFiles,
+  writeFileText,
+} from "./files.ts";
 
 const app = new Hono();
 
@@ -48,6 +61,110 @@ app.get("/api/cron-jobs/:id", (c) => {
 });
 
 app.get("/api/snapshot", (c) => c.json(getSnapshot()));
+
+// ─── Files ───────────────────────────────────────────────────────────
+
+function fileError(c: Context, err: unknown) {
+  if (err instanceof FileSafetyError) {
+    return c.json({ error: err.message }, err.status as 400 | 403 | 404 | 409 | 500);
+  }
+  console.error("[opsdash] files error", err);
+  return c.json({ error: (err as Error).message }, 500);
+}
+
+app.get("/api/files/config", (c) =>
+  c.json({ root: getFilesRoot(), maxBytes: getMaxBytes() }),
+);
+
+app.get("/api/files/tree", async (c) => {
+  try {
+    const path = c.req.query("path") ?? "";
+    const showHidden = c.req.query("showHidden") === "1";
+    const result = await listDir(path, showHidden);
+    return c.json(result);
+  } catch (err) {
+    return fileError(c, err);
+  }
+});
+
+app.get("/api/files/content", async (c) => {
+  try {
+    const path = c.req.query("path") ?? "";
+    if (!path) return c.json({ error: "path required" }, 400);
+    const result = await readFileText(path);
+    return c.json(result);
+  } catch (err) {
+    return fileError(c, err);
+  }
+});
+
+app.put("/api/files/content", async (c) => {
+  try {
+    const body = (await c.req.json()) as {
+      path?: string;
+      content?: string;
+      expectedMtime?: number;
+    };
+    if (!body.path || typeof body.content !== "string") {
+      return c.json({ error: "path and content required" }, 400);
+    }
+    const result = await writeFileText(body.path, body.content, body.expectedMtime);
+    return c.json(result);
+  } catch (err) {
+    return fileError(c, err);
+  }
+});
+
+app.post("/api/files/mkdir", async (c) => {
+  try {
+    const body = (await c.req.json()) as { path?: string };
+    if (!body.path) return c.json({ error: "path required" }, 400);
+    const result = await makeDir(body.path);
+    return c.json(result);
+  } catch (err) {
+    return fileError(c, err);
+  }
+});
+
+app.post("/api/files/rename", async (c) => {
+  try {
+    const body = (await c.req.json()) as { from?: string; to?: string };
+    if (!body.from || !body.to) return c.json({ error: "from and to required" }, 400);
+    const result = await renamePath(body.from, body.to);
+    return c.json(result);
+  } catch (err) {
+    return fileError(c, err);
+  }
+});
+
+app.get("/api/files/find", async (c) => {
+  try {
+    return c.json(await findFiles());
+  } catch (err) {
+    return fileError(c, err);
+  }
+});
+
+app.get("/api/files/search", async (c) => {
+  try {
+    const q = c.req.query("q") ?? "";
+    if (!q.trim()) return c.json({ results: [] });
+    return c.json(await searchFiles(q));
+  } catch (err) {
+    return fileError(c, err);
+  }
+});
+
+app.delete("/api/files", async (c) => {
+  try {
+    const path = c.req.query("path") ?? "";
+    if (!path) return c.json({ error: "path required" }, 400);
+    const result = await deletePath(path);
+    return c.json(result);
+  } catch (err) {
+    return fileError(c, err);
+  }
+});
 
 app.get("/api/events", (c) => {
   return streamSSE(c, async (stream) => {

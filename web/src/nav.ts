@@ -208,6 +208,7 @@ export class OpsNav extends LitElement {
         ${this.tab("taskflows", "02", "TaskFlows")}
         ${this.tab("cron-jobs", "03", "Cron Jobs")}
         ${this.tab("heartbeat", "04", "Heartbeat")}
+        ${this.tab("files", "05", "Files")}
       </div>
     `;
   }
