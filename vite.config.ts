@@ -1,26 +1,18 @@
 import { defineConfig } from "vite";
-import { resolve } from "node:path";
 
+// OpsDash is a static application. The repository root is the Vite root and the
+// build writes to dist/. There is no application backend and no dev proxy;
+// the browser talks to Dagmar directly over WSS (see src/dagmar-client.ts).
 export default defineConfig({
-  root: "web",
+  root: ".",
   server: {
-    port: 5173,
     host: true,
+    // Allow the tailnet hostname during development.
     allowedHosts: ["<host>.ts.net"],
-    proxy: {
-      "/api": "http://127.0.0.1:7890",
-    },
   },
   build: {
-    outDir: resolve(__dirname, "server/public"),
+    outDir: "dist",
     emptyOutDir: true,
     target: "es2022",
-    chunkSizeWarningLimit: 2048,
-  },
-  optimizeDeps: {
-    include: ["monaco-editor/esm/vs/editor/editor.api"],
-  },
-  worker: {
-    format: "es",
   },
 });
