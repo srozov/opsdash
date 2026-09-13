@@ -1,0 +1,570 @@
+/* OpsDash — Archon-referenced dark operations shell. One desktop-first screen:
+   fixed header over a three-column grid, each column its own scroll region. */
+
+:root {
+  --bg: #14161b;
+  --panel: #1a1d24;
+  --panel-2: #20242d;
+  --border: #2a2f3a;
+  --border-strong: #363c49;
+  --text: #e6e8ec;
+  --muted: #878d9c;
+  --accent: #5b9dff;
+  --accent-dim: #23324d;
+
+  /* Operational state colors, one per run/task/attempt state. */
+  --state-running: #4aa3ff;
+  --state-waiting: #d9a441;
+  --state-ready: #7aa2f7;
+  --state-pending: #6b7280;
+  --state-awaiting_permission: #c678dd;
+  --state-awaiting_input: #c678dd;
+  --state-completed: #47b881;
+  --state-blocked: #d9663f;
+  --state-blocked_by_dependency: #a97b3f;
+  --state-failed: #e5484d;
+  --state-cancelled: #6b7280;
+
+  --radius: 4px;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+ops-dash {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.mono {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.empty {
+  color: var(--muted);
+  padding: 12px;
+  font-style: italic;
+}
+
+/* --- header --- */
+
+.app-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 14px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.app-title {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.app-conn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.conn-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.conn-open {
+  background: var(--state-completed);
+  box-shadow: 0 0 6px var(--state-completed);
+}
+
+.conn-down {
+  background: var(--state-failed);
+}
+
+.conn-error {
+  color: var(--state-failed);
+}
+
+.stale-badge {
+  color: var(--state-waiting);
+  border: 1px solid var(--state-waiting);
+  border-radius: var(--radius);
+  padding: 0 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+/* --- layout grid --- */
+
+.layout {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 260px minmax(600px, 1fr) 420px;
+}
+
+.col {
+  min-height: 0;
+  overflow: auto;
+  border-right: 1px solid var(--border);
+}
+
+.col-task {
+  border-right: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.col-heading {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 12px 12px 6px;
+  font-weight: 600;
+}
+
+/* --- state badges --- */
+
+.state-badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-family: var(--mono);
+  color: #0d0f13;
+  background: var(--border-strong);
+  white-space: nowrap;
+}
+
+.state-running { background: var(--state-running); }
+.state-waiting { background: var(--state-waiting); }
+.state-ready { background: var(--state-ready); }
+.state-pending { background: var(--state-pending); color: var(--text); }
+.state-awaiting_permission { background: var(--state-awaiting_permission); }
+.state-awaiting_input { background: var(--state-awaiting_input); }
+.state-completed { background: var(--state-completed); }
+.state-blocked { background: var(--state-blocked); }
+.state-blocked_by_dependency { background: var(--state-blocked_by_dependency); }
+.state-failed { background: var(--state-failed); }
+.state-cancelled { background: var(--state-cancelled); color: var(--text); }
+
+/* --- run column --- */
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 10px 12px 6px;
+}
+
+.filter {
+  background: var(--panel-2);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 3px 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.filter.is-active {
+  color: var(--text);
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.workflow-errors {
+  padding: 0 12px;
+}
+
+.workflow-error {
+  border: 1px solid var(--state-failed);
+  border-left-width: 3px;
+  border-radius: var(--radius);
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  background: rgba(229, 72, 77, 0.08);
+}
+
+.run-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 8px 12px;
+}
+
+.run-row {
+  padding: 8px 8px;
+  border: 1px solid transparent;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.run-row:hover {
+  background: var(--panel-2);
+}
+
+.run-row.is-selected {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  border-radius: var(--radius);
+}
+
+.run-row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.run-workflow {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.run-row-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+/* --- center column --- */
+
+.col-center {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.run-summary {
+  flex: 0 0 auto;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.run-summary-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.run-summary-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 6px;
+}
+
+.graph-scroll {
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: 16px;
+}
+
+.workflow-catalog {
+  padding: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.workflow-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  background: var(--panel);
+}
+
+.workflow-card-id {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+/* --- graph --- */
+
+.graph {
+  position: relative;
+}
+
+.graph-edges {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.graph-edge {
+  fill: none;
+  stroke: var(--border-strong);
+  stroke-width: 1.5;
+}
+
+.graph-node {
+  position: absolute;
+  text-align: left;
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 7px 9px;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.graph-node:hover {
+  border-color: var(--muted);
+}
+
+.graph-node.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.graph-node-id {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.graph-node-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.graph-node-attempt {
+  font-size: 11px;
+}
+
+/* --- task column --- */
+
+.task-detail {
+  flex: 0 1 auto;
+  overflow: auto;
+  max-height: 55%;
+  border-bottom: 1px solid var(--border-strong);
+  padding-bottom: 12px;
+}
+
+.transcript-panel {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.transcript-scroll {
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: 0 12px 12px;
+}
+
+.task-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+}
+
+.task-id {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.task-meta {
+  padding: 6px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.attempt-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 12px;
+}
+
+.attempt-tab {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  padding: 3px 7px;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.attempt-tab.is-active {
+  color: var(--text);
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.attempt-detail {
+  padding: 4px 12px;
+}
+
+.attempt-grid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 12px;
+  align-items: center;
+}
+
+.attempt-block {
+  margin-top: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.attempt-block h3 {
+  margin: 0 0 4px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.attempt-error .mono {
+  color: var(--state-failed);
+}
+
+.interaction {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  background: var(--panel-2);
+}
+
+/* --- shared code / json blocks --- */
+
+pre.json,
+pre.log {
+  margin: 4px 0 0;
+  padding: 6px 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 11px;
+}
+
+pre.log {
+  white-space: pre-wrap;
+}
+
+.panel-error {
+  color: var(--state-failed);
+  background: rgba(229, 72, 77, 0.08);
+  border: 1px solid var(--state-failed);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  margin: 8px 12px;
+}
+
+/* --- transcript --- */
+
+.transcript {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.transcript-record {
+  border-bottom: 1px solid var(--border);
+  padding: 6px 0;
+}
+
+.transcript-row {
+  display: flex;
+  gap: 8px;
+}
+
+.transcript-time {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+.transcript-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.transcript-tag {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0 5px;
+  margin-right: 6px;
+}
+
+.transcript-thought {
+  color: var(--muted);
+}
+
+.transcript-thought summary,
+.transcript-raw summary {
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.transcript-raw {
+  margin-top: 4px;
+  padding-left: 76px;
+}
+
+.transcript-tool .mono {
+  color: var(--accent);
+}
