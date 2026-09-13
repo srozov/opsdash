@@ -5,8 +5,9 @@ import { formatDuration } from "./format.ts";
 
 const NODE_WIDTH = 190;
 const NODE_HEIGHT = 68;
-const GAP_X = 64;
-const GAP_Y = 18;
+// Horizontal gap between siblings at the same depth; vertical gap between depths.
+const GAP_X = 40;
+const GAP_Y = 56;
 const PAD = 20;
 
 interface Placed {
@@ -18,7 +19,8 @@ interface Placed {
 
 // Renders the run's task graph. Each task key is one node; each dependsOn entry
 // is one edge. A small deterministic layout groups tasks by dependency depth and
-// lays depth groups out left to right. Clicking a node selects the task.
+// stacks depth groups top to bottom (dependencies above their dependents), with
+// siblings spread left to right. Clicking a node selects the task.
 @customElement("run-graph")
 export class RunGraph extends LitElement {
   @property({ attribute: false }) run: RunView | null = null;
@@ -60,24 +62,25 @@ export class RunGraph extends LitElement {
       (groups.get(d) ?? groups.set(d, []).get(d)!).push(id);
     }
     const placed: Placed[] = [];
-    let maxRows = 0;
+    let maxCols = 0;
     for (const [d, ids] of [...groups.entries()].sort((a, b) => a[0] - b[0])) {
       ids.sort();
-      maxRows = Math.max(maxRows, ids.length);
-      ids.forEach((id, row) => {
+      maxCols = Math.max(maxCols, ids.length);
+      // Depth runs downward (rows); siblings within a depth spread across (columns).
+      ids.forEach((id, col) => {
         placed.push({
           id,
           task: tasks[id]!,
-          x: PAD + d * (NODE_WIDTH + GAP_X),
-          y: PAD + row * (NODE_HEIGHT + GAP_Y),
+          x: PAD + col * (NODE_WIDTH + GAP_X),
+          y: PAD + d * (NODE_HEIGHT + GAP_Y),
         });
       });
     }
     const depthCount = groups.size;
     return {
       placed,
-      width: PAD * 2 + Math.max(1, depthCount) * NODE_WIDTH + Math.max(0, depthCount - 1) * GAP_X,
-      height: PAD * 2 + Math.max(1, maxRows) * NODE_HEIGHT + Math.max(0, maxRows - 1) * GAP_Y,
+      width: PAD * 2 + Math.max(1, maxCols) * NODE_WIDTH + Math.max(0, maxCols - 1) * GAP_X,
+      height: PAD * 2 + Math.max(1, depthCount) * NODE_HEIGHT + Math.max(0, depthCount - 1) * GAP_Y,
     };
   }
 
@@ -88,13 +91,14 @@ export class RunGraph extends LitElement {
       for (const dep of node.task.dependsOn) {
         const from = byId.get(dep);
         if (!from) continue;
-        const x1 = from.x + NODE_WIDTH;
-        const y1 = from.y + NODE_HEIGHT / 2;
-        const x2 = node.x;
-        const y2 = node.y + NODE_HEIGHT / 2;
-        const mid = (x1 + x2) / 2;
+        // Edge from the dependency's bottom edge to the dependent's top edge.
+        const x1 = from.x + NODE_WIDTH / 2;
+        const y1 = from.y + NODE_HEIGHT;
+        const x2 = node.x + NODE_WIDTH / 2;
+        const y2 = node.y;
+        const mid = (y1 + y2) / 2;
         paths.push(
-          svg`<path class="graph-edge" d="M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}" />`,
+          svg`<path class="graph-edge" d="M ${x1} ${y1} C ${x1} ${mid}, ${x2} ${mid}, ${x2} ${y2}" />`,
         );
       }
     }
