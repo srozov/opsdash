@@ -12,5 +12,6 @@ server/public/assets/
 *.log
 
 # OS
+_.*
 .DS_Store
 Thumbs.db
