@@ -16,3 +16,5 @@ dist/
 _.*
 .DS_Store
 Thumbs.db
+# Local implementation notes (not committed)
+PLAN.md
