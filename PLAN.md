@@ -155,8 +155,17 @@ events.subscribe
 The client holds protocol state only. `app.ts` holds the returned workflow and
 run data.
 
-Copy the consumed public wire shapes from Dagmar into `dagmar-types.ts`. Keep
-field names and status strings unchanged. Do not import Dagmar source files.
+Copy the consumed public wire shapes from Dagmar into `dagmar-types.ts` (source:
+`/home/<host>/dagmar/src/types.ts` — `RunView`, `AttemptRow`, `Interaction`,
+`TranscriptRecord`, `DagmarEvent`, `WorkflowErrorView`, and the `RunStatus` /
+`AttemptStatus` / `TaskState` unions). Keep field names and status strings
+unchanged. Do not import Dagmar source files.
+
+Dagmar delivers events as a single JSON-RPC notification `{ method: "event",
+params: <DagmarEvent> }`, not as one method per event type. The client
+dispatches on `event.type`. Every event carries `workflowRunId`, and
+task/interaction/transcript events also carry `taskRunId`, so the client can
+match an event to the selected run or attempt.
 
 ## Initial load
 
@@ -216,8 +225,12 @@ Use Archon's workflow interface as the visual and interaction reference:
 - thin borders between working areas instead of floating dashboard cards;
 - compact headers, controls, badges, and metadata;
 - muted secondary text with high-contrast operational state;
-- a distinct color for running, waiting, completed, blocked, failed, and
-  cancelled states;
+- a distinct color for each state the UI renders. Run status is one of
+  `running`, `waiting`, `completed`, `blocked`, `cancelled` (there is no
+  run-level `failed`). Task state adds `pending`, `ready`, `awaiting_permission`,
+  `awaiting_input`, `failed`, and `blocked_by_dependency`; give
+  `awaiting_permission` and `awaiting_input` a visible treatment because they
+  mark pending interactions on the graph;
 - a bright accent for the selected run, selected task, and keyboard focus;
 - sans-serif text for labels and monospace text for IDs, timestamps, JSON, and
   transcript records;
@@ -245,7 +258,9 @@ Sort runs by `startedAt` descending and render the newest 50. Show:
 - end time or elapsed duration.
 
 Provide browser-side filters for active, waiting, blocked, completed, and
-cancelled runs.
+cancelled runs. The "active" filter matches the native `running` status.
+`run.list` omits each run's `input`; the full input is only in the `RunView`
+returned by `run.get`.
 
 ## Run graph
 
@@ -295,9 +310,11 @@ When an attempt is selected:
 3. On a matching `transcript.appended` event, request records after `nextLine`.
 4. Append the returned records in order.
 
-Render lifecycle records as rows, process streams as log blocks, ACP agent
-messages as text, thoughts in a collapsed disclosure, and tool calls as tool
-blocks. Render unknown records as formatted JSON.
+Records have one of three types: `lifecycle`, `stdio`, and `acp`. Render
+`lifecycle` records as rows and `stdio` records as log blocks. For `acp` records,
+inspect the `message` payload and render ACP agent messages as text, thoughts in
+a collapsed disclosure, and tool calls as tool blocks. Render unknown records or
+unrecognized `acp` message shapes as formatted JSON.
 
 Provide raw JSON for every record. Bind text through Lit and do not inject
 transcript HTML.
