@@ -27,6 +27,7 @@ These are implementation constraints, not slogans. Apply them by default.
   Branch: claude/<feature>
   ```
 
+- Worktrees should always branch from fresh `main`. Update `main` first, then create the feature branch from it — never branch off another feature or integration branch.
 - Before editing, run `git status --short` in the relevant worktree. Preserve any changes that do not belong to the current task.
 - Avoid assigning separate agents to overlapping files. Agree on shared interfaces before implementing dependent features.
 
