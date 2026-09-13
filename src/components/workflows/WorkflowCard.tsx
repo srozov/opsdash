@@ -3,14 +3,22 @@ import { useNavigate } from "react-router-dom";
 import { Play } from "lucide-react";
 import type { Json, WorkflowSummary } from "../../dagmar-types.ts";
 import { useDagmar } from "../../dagmar/DagmarProvider.tsx";
+import { ACTIVE_STATUSES } from "../../lib/runs.ts";
+import { shortId } from "../../format.ts";
 import { Button } from "../ui/Button.tsx";
+import { StatusBadge } from "../ui/StatusBadge.tsx";
 
 // One workflow definition, mirroring Archon's WorkflowCard. Dagmar workflows are
 // read-only YAML, so instead of an editor this offers a Start control with a
 // JSON run-input box that calls run.start and opens the new run.
 export function WorkflowCard({ wf }: { wf: WorkflowSummary }) {
-  const { startRun, connected } = useDagmar();
+  const { startRun, connected, runs } = useDagmar();
   const navigate = useNavigate();
+
+  // Prefer the newest active run of this workflow, else the newest run overall
+  // (runs are pre-sorted newest-first).
+  const wfRuns = runs.filter((r) => r.workflowId === wf.id);
+  const latestRun = wfRuns.find((r) => ACTIVE_STATUSES.includes(r.status)) ?? wfRuns[0] ?? null;
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("{}");
   const [busy, setBusy] = useState(false);
@@ -54,6 +62,17 @@ export function WorkflowCard({ wf }: { wf: WorkflowSummary }) {
       <div className="truncate font-mono text-xs text-text-tertiary" title={wf.file}>
         {wf.file}
       </div>
+      {latestRun && (
+        <div className="flex items-center justify-between gap-2 border-t border-border pt-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <StatusBadge state={latestRun.status} />
+            <span className="truncate font-mono text-xs text-text-tertiary" title={latestRun.id}>
+              {shortId(latestRun.id)}
+            </span>
+          </div>
+          <Button onClick={() => navigate(`/workflows/runs/${latestRun.id}`)}>View run</Button>
+        </div>
+      )}
       {open && (
         <div className="flex flex-col gap-2">
           <label className="font-mono text-xs text-text-tertiary">run input (JSON)</label>
