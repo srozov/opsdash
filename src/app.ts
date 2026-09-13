@@ -5,6 +5,7 @@ import type {
   Attempt,
   DagmarEvent,
   Interaction,
+  Json,
   PingResult,
   RunSummary,
   RunTask,
@@ -55,6 +56,13 @@ export class OpsDash extends LitElement {
   @state() private filter: RunFilter = "all";
   @state() private transcriptTick = 0;
   @state() private reloadToken = 0;
+
+  // Write controls.
+  @state() private busy = false;
+  @state() private actionError: string | null = null;
+  @state() private triggerWorkflowId: string | null = null;
+  @state() private triggerInput = "{}";
+  @state() private interactionInputs: Record<string, string> = {};
 
   protected createRenderRoot(): HTMLElement {
     return this;
@@ -216,6 +224,96 @@ export class OpsDash extends LitElement {
     this.selectedAttemptId = latestAttempt(attempts)?.id ?? null;
   }
 
+  // --- write actions ---
+
+  // Run one write request with a shared busy flag and error surface. Returns the
+  // result, or undefined on failure (error shown in the action banner).
+  private async write<T>(label: string, fn: () => Promise<T>): Promise<T | undefined> {
+    this.busy = true;
+    this.actionError = null;
+    try {
+      return await fn();
+    } catch (error) {
+      this.actionError = `${label}: ${error instanceof Error ? error.message : "failed"}`;
+      return undefined;
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  // Apply a RunView returned by a write for immediate feedback, and refresh the
+  // run list. Live events will follow and keep everything current.
+  private applyRun(run: RunView): void {
+    if (run.id === this.selectedRunId) {
+      this.run = run;
+      this.reconcileTaskSelection();
+    }
+    void this.loadRuns();
+  }
+
+  private async submitTrigger(workflowId: string): Promise<void> {
+    let input: Json;
+    try {
+      input = JSON.parse(this.triggerInput) as Json;
+    } catch {
+      this.actionError = "Run input is not valid JSON";
+      return;
+    }
+    const result = await this.write("Start run", () =>
+      this.client.request<{ workflowRunId: string; status: string }>("run.start", {
+        workflowId,
+        input,
+      }),
+    );
+    if (!result) return;
+    this.triggerWorkflowId = null;
+    await this.loadRuns();
+    this.selectRun(result.workflowRunId);
+  }
+
+  private async cancelRun(runId: string): Promise<void> {
+    const run = await this.write("Cancel run", () =>
+      this.client.request<RunView>("run.cancel", { workflowRunId: runId }),
+    );
+    if (run) this.applyRun(run);
+  }
+
+  private async resumeRun(runId: string): Promise<void> {
+    const run = await this.write("Resume run", () =>
+      this.client.request<RunView>("run.resume", { workflowRunId: runId }),
+    );
+    if (run) this.applyRun(run);
+  }
+
+  private async cancelTask(taskRunId: string): Promise<void> {
+    const run = await this.write("Cancel task", () =>
+      this.client.request<RunView>("task.cancel", { taskRunId }),
+    );
+    if (run) this.applyRun(run);
+  }
+
+  private async answerInteraction(interactionId: string, response: Json): Promise<void> {
+    const run = await this.write("Answer interaction", () =>
+      this.client.request<RunView>("interaction.answer", { interactionId, response }),
+    );
+    if (run) {
+      this.applyRun(run);
+      await this.loadInteractions();
+    }
+  }
+
+  private acceptElicitation(interactionId: string): void {
+    const raw = this.interactionInputs[interactionId] ?? "{}";
+    let content: Json;
+    try {
+      content = JSON.parse(raw) as Json;
+    } catch {
+      this.actionError = "Interaction response is not valid JSON";
+      return;
+    }
+    void this.answerInteraction(interactionId, { action: "accept", content });
+  }
+
   private get filteredRuns(): RunSummary[] {
     const match = (r: RunSummary): boolean => {
       switch (this.filter) {
@@ -235,6 +333,12 @@ export class OpsDash extends LitElement {
   protected render(): unknown {
     return html`
       ${this.renderHeader()}
+      ${this.actionError
+        ? html`<div class="action-error">
+            <span>${this.actionError}</span>
+            <button class="link" @click=${() => (this.actionError = null)}>dismiss</button>
+          </div>`
+        : nothing}
       <div class="layout">
         <aside class="col col-runs">${this.renderRunColumn()}</aside>
         <section class="col col-center">${this.renderCenter()}</section>
@@ -268,8 +372,60 @@ export class OpsDash extends LitElement {
     `;
   }
 
+  private renderWorkflowsPanel(): TemplateResult {
+    const workflows = this.workflows?.workflows ?? [];
+    if (workflows.length === 0) return html``;
+    return html`
+      <h2 class="col-heading">Workflows</h2>
+      <ul class="wf-list">
+        ${workflows.map(
+          (w) => html`<li class="wf-row">
+            <div class="wf-row-top">
+              <span class="wf-id" title=${w.file}>${w.id}</span>
+              <button
+                class="btn btn-start"
+                ?disabled=${this.busy || !this.connected}
+                @click=${() =>
+                  (this.triggerWorkflowId = this.triggerWorkflowId === w.id ? null : w.id)}
+              >
+                Start
+              </button>
+            </div>
+            <div class="muted mono">${w.taskCount} task${w.taskCount === 1 ? "" : "s"}</div>
+            ${this.triggerWorkflowId === w.id
+              ? html`<div class="trigger-form">
+                  <label class="muted mono">run input (JSON)</label>
+                  <textarea
+                    class="code-input mono"
+                    rows="3"
+                    spellcheck="false"
+                    .value=${this.triggerInput}
+                    @input=${(e: Event) =>
+                      (this.triggerInput = (e.target as HTMLTextAreaElement).value)}
+                  ></textarea>
+                  <div class="btn-row">
+                    <button
+                      class="btn btn-primary"
+                      ?disabled=${this.busy}
+                      @click=${() => this.submitTrigger(w.id)}
+                    >
+                      Start run
+                    </button>
+                    <button class="btn" ?disabled=${this.busy} @click=${() => (this.triggerWorkflowId = null)}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>`
+              : nothing}
+          </li>`,
+        )}
+      </ul>
+    `;
+  }
+
   private renderRunColumn(): TemplateResult {
     return html`
+      ${this.renderWorkflowsPanel()}
       ${this.workflowsError
         ? html`<p class="panel-error">Workflow discovery failed: ${this.workflowsError}</p>`
         : nothing}
@@ -383,6 +539,33 @@ export class OpsDash extends LitElement {
           <span>update ${formatTime(run.updatedAt)}</span>
           ${run.endedAt ? html`<span>end ${formatTime(run.endedAt)}</span>` : nothing}
         </div>
+        ${this.renderRunControls(run)}
+      </div>
+    `;
+  }
+
+  private renderRunControls(run: RunSummary | RunView): TemplateResult {
+    const active = run.status === "running" || run.status === "waiting";
+    const blocked = run.status === "blocked";
+    if (!active && !blocked) return html``;
+    return html`
+      <div class="btn-row run-controls">
+        ${blocked
+          ? html`<button
+              class="btn btn-primary"
+              ?disabled=${this.busy || !this.connected}
+              @click=${() => this.resumeRun(run.id)}
+            >
+              Resume
+            </button>`
+          : nothing}
+        <button
+          class="btn btn-danger"
+          ?disabled=${this.busy || !this.connected}
+          @click=${() => this.cancelRun(run.id)}
+        >
+          Cancel run
+        </button>
       </div>
     `;
   }
@@ -458,6 +641,17 @@ export class OpsDash extends LitElement {
           <span>duration</span><span>${formatDuration(attempt.startedAt, attempt.endedAt)}</span>
           <span>ACP session</span><span>${attempt.acpSessionId ?? "—"}</span>
         </div>
+        ${["running", "awaiting_permission", "awaiting_input"].includes(attempt.status)
+          ? html`<div class="btn-row">
+              <button
+                class="btn btn-danger"
+                ?disabled=${this.busy || !this.connected}
+                @click=${() => this.cancelTask(attempt.id)}
+              >
+                Cancel task
+              </button>
+            </div>`
+          : nothing}
         ${attempt.result
           ? html`<div class="attempt-block">
               <h3>Result</h3>
@@ -479,19 +673,90 @@ export class OpsDash extends LitElement {
         ${interactions.length
           ? html`<div class="attempt-block">
               <h3>Pending interactions</h3>
-              ${interactions.map(
-                (i) => html`<div class="interaction">
-                  <div class="mono">
-                    <span class="state-badge">${i.kind}</span> ${i.method}
-                  </div>
-                  <pre class="mono json">${JSON.stringify(i.request, null, 2)}</pre>
-                </div>`,
-              )}
+              ${interactions.map((i) => this.renderInteraction(i))}
             </div>`
           : nothing}
       </div>
     `;
   }
+
+  private renderInteraction(i: Interaction): TemplateResult {
+    return html`
+      <div class="interaction">
+        <div class="mono"><span class="state-badge">${i.kind}</span> ${i.method}</div>
+        <pre class="mono json">${JSON.stringify(i.request, null, 2)}</pre>
+        ${this.renderInteractionControls(i)}
+      </div>
+    `;
+  }
+
+  private renderInteractionControls(i: Interaction): TemplateResult {
+    const disabled = this.busy || !this.connected;
+    if (i.kind === "permission") {
+      const options = permissionOptions(i.request);
+      return html`<div class="btn-row">
+        ${options.map(
+          (o) => html`<button
+            class="btn btn-primary"
+            ?disabled=${disabled}
+            @click=${() =>
+              this.answerInteraction(i.id, { outcome: { outcome: "selected", optionId: o.optionId } })}
+          >
+            ${o.name ?? o.optionId}
+          </button>`,
+        )}
+        <button
+          class="btn"
+          ?disabled=${disabled}
+          @click=${() => this.answerInteraction(i.id, { outcome: { outcome: "cancelled" } })}
+        >
+          Cancel
+        </button>
+      </div>`;
+    }
+    // input / elicitation: accept with a JSON content object, or decline.
+    return html`<div class="trigger-form">
+      <label class="muted mono">response content (JSON)</label>
+      <textarea
+        class="code-input mono"
+        rows="3"
+        spellcheck="false"
+        .value=${this.interactionInputs[i.id] ?? "{}"}
+        @input=${(e: Event) =>
+          (this.interactionInputs = {
+            ...this.interactionInputs,
+            [i.id]: (e.target as HTMLTextAreaElement).value,
+          })}
+      ></textarea>
+      <div class="btn-row">
+        <button class="btn btn-primary" ?disabled=${disabled} @click=${() => this.acceptElicitation(i.id)}>
+          Accept
+        </button>
+        <button
+          class="btn"
+          ?disabled=${disabled}
+          @click=${() => this.answerInteraction(i.id, { action: "decline" })}
+        >
+          Decline
+        </button>
+      </div>
+    </div>`;
+  }
+}
+
+// Extract the selectable options from an ACP permission request.
+function permissionOptions(request: Json): { optionId: string; name?: string }[] {
+  if (!request || typeof request !== "object" || Array.isArray(request)) return [];
+  const options = (request as { [key: string]: Json }).options;
+  if (!Array.isArray(options)) return [];
+  const result: { optionId: string; name?: string }[] = [];
+  for (const option of options) {
+    if (!option || typeof option !== "object" || Array.isArray(option)) continue;
+    const row = option as { [key: string]: Json };
+    if (typeof row.optionId !== "string") continue;
+    result.push({ optionId: row.optionId, name: typeof row.name === "string" ? row.name : undefined });
+  }
+  return result;
 }
 
 function latestAttempt(attempts: Attempt[]): Attempt | undefined {

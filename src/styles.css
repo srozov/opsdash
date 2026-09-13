@@ -568,3 +568,131 @@ pre.log {
 .transcript-tool .mono {
   color: var(--accent);
 }
+
+/* --- controls (buttons, trigger/answer forms) --- */
+
+.btn {
+  font-family: var(--sans);
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  background: var(--panel-2);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  color: var(--text);
+}
+
+.btn-danger {
+  border-color: var(--state-failed);
+  color: var(--state-failed);
+  background: transparent;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: rgba(229, 72, 77, 0.12);
+}
+
+.btn-start {
+  padding: 1px 8px;
+  font-size: 11px;
+}
+
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.run-controls {
+  margin-top: 10px;
+}
+
+.link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.action-error {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 14px;
+  background: rgba(229, 72, 77, 0.12);
+  border-bottom: 1px solid var(--state-failed);
+  color: var(--state-failed);
+  font-size: 12px;
+}
+
+/* --- workflows panel --- */
+
+.wf-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 8px 8px;
+}
+
+.wf-row {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.wf-row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.wf-id {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trigger-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.code-input {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+.code-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
