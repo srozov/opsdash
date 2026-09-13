@@ -2,32 +2,53 @@
    fixed header over a three-column grid, each column its own scroll region. */
 
 :root {
-  --bg: #14161b;
-  --panel: #1a1d24;
-  --panel-2: #20242d;
-  --border: #2a2f3a;
-  --border-strong: #363c49;
-  --text: #e6e8ec;
-  --muted: #878d9c;
-  --accent: #5b9dff;
-  --accent-dim: #23324d;
+  /* Archon console design tokens (packages/web/src/experiments/console/theme.css). */
+  --bg: oklch(0.145 0.006 265);
+  --surface: oklch(0.175 0.007 265);
+  --surface-inset: oklch(0.13 0.006 265);
+  --surface-elevated: oklch(0.205 0.009 265);
+  --surface-hover: oklch(0.225 0.01 265);
+  --surface-bright: oklch(0.275 0.012 265);
+  --border: oklch(0.275 0.012 265);
+  --border-bright: oklch(0.355 0.016 265);
+  --text: oklch(0.975 0.004 265);
+  --text-secondary: oklch(0.745 0.014 265);
+  --text-tertiary: oklch(0.56 0.017 265);
+  --accent: oklch(0.64 0.295 330);
+  --accent-hover: oklch(0.7 0.28 330);
+  --accent-soft: oklch(0.64 0.295 330 / 0.14);
 
-  /* Operational state colors, one per run/task/attempt state. */
-  --state-running: #4aa3ff;
-  --state-waiting: #d9a441;
-  --state-ready: #7aa2f7;
-  --state-pending: #6b7280;
-  --state-awaiting_permission: #c678dd;
-  --state-awaiting_input: #c678dd;
-  --state-completed: #47b881;
-  --state-blocked: #d9663f;
-  --state-blocked_by_dependency: #a97b3f;
-  --state-failed: #e5484d;
-  --state-cancelled: #6b7280;
+  /* Aliases used throughout this stylesheet. */
+  --panel: var(--surface);
+  --panel-2: var(--surface-elevated);
+  --border-strong: var(--border-bright);
+  --muted: var(--text-secondary);
+  --accent-dim: var(--accent-soft);
 
-  --radius: 4px;
-  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Archon status palette. */
+  --running: oklch(0.72 0.155 245);
+  --success: oklch(0.755 0.165 168);
+  --warning: oklch(0.8 0.14 85);
+  --error: oklch(0.68 0.215 18);
+
+  /* One color per run/task/attempt state, mapped onto the Archon palette. */
+  --state-running: var(--running);
+  --state-waiting: var(--warning);
+  --state-ready: var(--running);
+  --state-pending: var(--text-tertiary);
+  --state-awaiting_permission: var(--accent);
+  --state-awaiting_input: var(--accent);
+  --state-completed: var(--success);
+  --state-blocked: var(--warning);
+  --state-blocked_by_dependency: var(--text-tertiary);
+  --state-failed: var(--error);
+  --state-cancelled: var(--text-tertiary);
+
+  --radius: 6px;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-feature-settings: "ss01", "cv11";
+  letter-spacing: -0.005em;
   color-scheme: dark;
 }
 
@@ -331,27 +352,41 @@ ops-dash {
 
 .graph-edge {
   fill: none;
-  stroke: var(--border-strong);
+  stroke: var(--border-bright);
   stroke-width: 1.5;
+}
+
+/* Edges into a running node march (Archon animates running edges). */
+.graph-edge.edge-animated {
+  stroke-dasharray: 6 4;
+  animation: edge-dash 0.6s linear infinite;
+}
+
+@keyframes edge-dash {
+  to {
+    stroke-dashoffset: -20;
+  }
 }
 
 .graph-node {
   position: absolute;
   text-align: left;
-  background: var(--panel);
-  border: 1px solid var(--border-strong);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-bright);
+  /* Status accent down the leading edge; color set inline per node state. */
+  border-left: 3px solid var(--border-bright);
   border-radius: var(--radius);
-  padding: 7px 9px;
+  padding: 8px 11px;
   color: var(--text);
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
   overflow: hidden;
 }
 
 .graph-node:hover {
-  border-color: var(--muted);
+  background: var(--surface-hover);
 }
 
 .graph-node.is-selected {

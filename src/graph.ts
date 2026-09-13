@@ -3,12 +3,13 @@ import { customElement, property } from "lit/decorators.js";
 import type { RunTask, RunView } from "./dagmar-types.ts";
 import { formatDuration } from "./format.ts";
 
-const NODE_WIDTH = 190;
-const NODE_HEIGHT = 68;
-// Horizontal gap between siblings at the same depth; vertical gap between depths.
-const GAP_X = 40;
-const GAP_Y = 56;
-const PAD = 20;
+// Node size and spacing mirror Archon's dagre layout (rankdir TB, nodesep 40,
+// ranksep 80; node 180x80) — see @/lib/dag-layout in coleam00/Archon.
+const NODE_WIDTH = 180;
+const NODE_HEIGHT = 80;
+const GAP_X = 40; // nodesep: between siblings at the same depth
+const GAP_Y = 80; // ranksep: between depth rows
+const PAD = 24;
 
 interface Placed {
   id: string;
@@ -92,13 +93,20 @@ export class RunGraph extends LitElement {
         const from = byId.get(dep);
         if (!from) continue;
         // Edge from the dependency's bottom edge to the dependent's top edge.
+        // Colored by the target node's state; animated while it is running
+        // (matching Archon, where edge stroke follows target status).
         const x1 = from.x + NODE_WIDTH / 2;
         const y1 = from.y + NODE_HEIGHT;
         const x2 = node.x + NODE_WIDTH / 2;
         const y2 = node.y;
         const mid = (y1 + y2) / 2;
+        const animated = node.task.state === "running" ? " edge-animated" : "";
         paths.push(
-          svg`<path class="graph-edge" d="M ${x1} ${y1} C ${x1} ${mid}, ${x2} ${mid}, ${x2} ${y2}" />`,
+          svg`<path
+            class="graph-edge${animated}"
+            style="stroke: var(--state-${node.task.state})"
+            d="M ${x1} ${y1} C ${x1} ${mid}, ${x2} ${mid}, ${x2} ${y2}"
+          />`,
         );
       }
     }
@@ -115,7 +123,7 @@ export class RunGraph extends LitElement {
     return html`
       <button
         class="graph-node ${selected ? "is-selected" : ""}"
-        style="left:${node.x}px;top:${node.y}px;width:${NODE_WIDTH}px;height:${NODE_HEIGHT}px"
+        style="left:${node.x}px;top:${node.y}px;width:${NODE_WIDTH}px;height:${NODE_HEIGHT}px;border-left-color:var(--state-${node.task.state})"
         @click=${() => this.select(node.id)}
         title=${node.id}
       >
