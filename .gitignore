@@ -12,6 +12,7 @@ dist/
 *.log
 
 # OS
+._*
 _.*
 .DS_Store
 Thumbs.db

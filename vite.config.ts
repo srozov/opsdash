@@ -16,6 +16,8 @@ export default defineConfig({
     host: "127.0.0.1",
     port: 7890,
     strictPort: true,
+    // Accept any Tailscale MagicDNS host (the dev server binds loopback and is
+    // published to the tailnet by `tailscale serve`).
     allowedHosts: [".ts.net"],
     hmr: {
       protocol: "wss",
