@@ -23,8 +23,11 @@ seed=${VERIFY_SEED:-999}
 mkdir -p "$state/workflows" "$state/state" "$state/target"
 printf '{"name":"t6-target","private":true,"scripts":{"test":"node -e \\"\\""}}\n' > "$state/target/package.json"
 printf '%s' "$seed" > "$state/verify-count"
-sed "s#/ABSOLUTE/PATH/TO/dagmar#$dagmar#g" "$dagmar/examples/review-iteration-loop.yaml" \
-  > "$state/workflows/review-iteration-loop.yaml"
+# Literal split/join: sed and bash ${//} treat characters such as # and & in the path specially.
+node -e 'const fs = require("node:fs");
+  const [src, dest, dagmar] = process.argv.slice(1);
+  fs.writeFileSync(dest, fs.readFileSync(src, "utf8").split("/ABSOLUTE/PATH/TO/dagmar").join(dagmar));' \
+  "$dagmar/examples/review-iteration-loop.yaml" "$state/workflows/review-iteration-loop.yaml" "$dagmar"
 
 agent_env='{}'
 if [ -n "${FAKE_ACP_DELAY_MS:-}" ]; then agent_env="{ FAKE_ACP_DELAY_MS: \"$FAKE_ACP_DELAY_MS\" }"; fi
