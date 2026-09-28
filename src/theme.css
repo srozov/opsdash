@@ -63,6 +63,12 @@
   --state-blocked_by_dependency: var(--color-text-tertiary);
   --state-failed: var(--color-error);
   --state-cancelled: var(--color-text-tertiary);
+  --state-skipped: var(--color-text-tertiary);
+  /* Interaction kinds (StatusBadge renders these via --state-<kind>). */
+  --state-permission: var(--color-accent);
+  --state-input: var(--color-accent);
+  --state-turn: var(--color-running);
+  --state-gate: var(--color-warning);
 }
 
 /* React Flow dark surface so the canvas matches the shell. */
