@@ -16,6 +16,8 @@ const chunk = (sessionId, kind, text) =>
 const envelope = (message, output) => JSON.stringify({ outcome: "completed", message, output });
 
 let sessionId = "fake-session";
+// Interactive-turn state lives in this process: it relies on Dagmar running one attempt per agent
+// process, so the count starts at zero for every interactive task.
 let interactiveTurns = 0;
 
 function reply(text) {
