@@ -22,8 +22,22 @@ import type {
 } from "../dagmar-types.ts";
 
 // Dagmar is reached through Tailscale Serve on the same tailnet host that serves
-// OpsDash. Derive the endpoint from the page hostname.
-const DAGMAR_URL = `wss://${location.hostname}:7331`;
+// OpsDash. The endpoint is derived from the page hostname; `?dagmar=<port>`
+// selects a non-default daemon (default 7331). An invalid value is an error,
+// never a silent default.
+const DEFAULT_DAGMAR_PORT = 7331;
+
+function resolveDagmarUrl(search: string): { url: string } | { error: string } {
+  const raw = new URLSearchParams(search).get("dagmar");
+  if (raw === null) return { url: `wss://${location.hostname}:${DEFAULT_DAGMAR_PORT}` };
+  const port = Number(raw);
+  if (!/^\d+$/.test(raw) || port < 1 || port > 65535) {
+    return { error: `Invalid ?dagmar=${raw}: expected an integer port from 1 to 65535.` };
+  }
+  return { url: `wss://${location.hostname}:${port}` };
+}
+
+const DAGMAR_TARGET = resolveDagmarUrl(location.search);
 
 const msg = (e: unknown): string => (e instanceof Error ? e.message : "request failed");
 
@@ -111,7 +125,8 @@ export function DagmarProvider({ children }: { children: ReactNode }) {
   }, [refreshRuns, refreshInteractions]);
 
   useEffect(() => {
-    const client = new DagmarClient(DAGMAR_URL, {
+    if ("error" in DAGMAR_TARGET) return;
+    const client = new DagmarClient(DAGMAR_TARGET.url, {
       onOpen: () => {
         setConnected(true);
         setConnectionError(null);
@@ -229,6 +244,14 @@ export function DagmarProvider({ children }: { children: ReactNode }) {
       answerInteraction,
     ],
   );
+
+  if ("error" in DAGMAR_TARGET) {
+    return (
+      <div role="alert" className="m-4 rounded border border-error/40 bg-error/10 p-3 text-sm text-error">
+        {DAGMAR_TARGET.error}
+      </div>
+    );
+  }
 
   return <DagmarContext.Provider value={value}>{children}</DagmarContext.Provider>;
 }
