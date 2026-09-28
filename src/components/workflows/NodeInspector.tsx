@@ -225,7 +225,7 @@ function AttemptDetail({
                     Cancel
                   </Button>
                 </div>
-              ) : (
+              ) : i.kind === "input" ? (
                 <div className="mt-2 flex flex-col gap-2">
                   <textarea
                     value={inputs[i.id] ?? "{}"}
@@ -255,6 +255,11 @@ function AttemptDetail({
                     </Button>
                   </div>
                 </div>
+              ) : (
+                // turn/gate answers are not a JSON object; no control until they are supported.
+                <p className="mt-2 text-xs text-text-tertiary italic">
+                  Answering {i.kind} interactions is not supported here yet.
+                </p>
               )}
             </div>
           ))}

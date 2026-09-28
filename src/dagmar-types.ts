@@ -1,6 +1,6 @@
 // Dagmar public wire shapes consumed by OpsDash.
 //
-// Copied from /home/<host>/dagmar/src/types.ts (types) plus the inline result
+// Copied from dagmar/src/types.ts (types) plus the inline result
 // shapes returned by the RPC handlers in daemon.ts and the event payloads
 // published in scheduler.ts. Field names and status strings are kept identical.
 // Do not import Dagmar source files; OpsDash has no build dependency on Dagmar.
@@ -8,7 +8,9 @@
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 export type JsonObject = { [key: string]: Json };
 
-export type ExecutorType = "process" | "acp";
+export type JsonSchema = boolean | Record<string, unknown>;
+
+export type ExecutorType = "process" | "acp" | "gate";
 
 export type RunStatus = "running" | "waiting" | "completed" | "blocked" | "cancelled";
 
@@ -19,7 +21,8 @@ export type AttemptStatus =
   | "completed"
   | "blocked"
   | "failed"
-  | "cancelled";
+  | "cancelled"
+  | "skipped";
 
 export type TaskState = "pending" | "ready" | AttemptStatus | "blocked_by_dependency";
 
@@ -33,6 +36,38 @@ export interface TaskError {
   code: string;
   message: string;
   data?: Json;
+}
+
+// workflow.get: the full validated definition. RunView carries none of these fields.
+export interface WhenClause {
+  ref: string;
+  equals?: Json;
+  in?: Json[];
+}
+
+export interface TaskDef {
+  executor?: string;
+  dependsOn: string[];
+  inputs: JsonObject;
+  prompt?: string;
+  run?: [string, ...string[]];
+  outputSchema?: JsonSchema;
+  interactive?: boolean;
+  session?: { mode: "fresh" } | { mode: "continue"; from: string };
+  gate?: { prompt: string; schema?: JsonSchema };
+  when?: WhenClause[];
+  loop?: { to: string; maxVisits: number };
+}
+
+export interface Workflow {
+  id: string;
+  tasks: Record<string, TaskDef>;
+}
+
+// executor.list
+export interface ExecutorSummary {
+  name: string;
+  type: "process" | "acp";
 }
 
 // AttemptRow with workflowRunId/taskId/executorProfile/executorType omitted, as
@@ -51,6 +86,7 @@ export interface Attempt {
 
 export interface RunTask {
   dependsOn: string[];
+  // Executor profile name, or the literal "gate" for gate tasks.
   executor: string;
   state: TaskState;
   attempts: Attempt[];
@@ -78,8 +114,8 @@ export interface Interaction {
   id: string;
   workflowRunId: string;
   taskRunId: string;
-  kind: "permission" | "input";
-  method: "session/request_permission" | "elicitation/create";
+  kind: "permission" | "input" | "turn" | "gate";
+  method: "session/request_permission" | "elicitation/create" | "turn/next" | "gate/answer";
   request: Json;
   createdAt: string;
 }
