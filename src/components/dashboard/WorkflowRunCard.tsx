@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { RunSummary } from "../../dagmar-types.ts";
-import { useDagmar } from "../../dagmar/DagmarProvider.tsx";
+import { useDagmar, withDagmarQuery } from "../../dagmar/DagmarProvider.tsx";
 import { formatDuration, formatTime, shortId } from "../../format.ts";
 import { useNow } from "../../lib/useNow.ts";
 import { StatusBadge } from "../ui/StatusBadge.tsx";
@@ -34,7 +34,7 @@ export function WorkflowRunCard({ run }: { run: RunSummary }) {
   return (
     <div
       className="flex cursor-pointer flex-col gap-3 rounded-lg border border-border bg-surface p-4 hover:border-border-bright"
-      onClick={() => navigate(`/workflows/runs/${run.id}`)}
+      onClick={() => navigate(withDagmarQuery(`/workflows/runs/${run.id}`))}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
