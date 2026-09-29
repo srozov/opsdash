@@ -2,6 +2,7 @@ import { type ReactNode } from "react";
 import { useTranscript } from "../../dagmar/DagmarProvider.tsx";
 import type { Json, TranscriptRecord } from "../../dagmar-types.ts";
 import { formatTime } from "../../format.ts";
+import { groupTranscript, selectedConfig, type TranscriptItem } from "../../lib/transcript.ts";
 
 const stringify = (v: unknown) => JSON.stringify(v, null, 2);
 const isObject = (v: Json | undefined): v is { [k: string]: Json } =>
@@ -14,19 +15,6 @@ function sessionUpdate(message: Json): { [k: string]: Json } | null {
   if (!isObject(params)) return null;
   const update = params.update;
   return isObject(update) ? update : null;
-}
-
-function contentText(content: Json | undefined): string | null {
-  if (content === undefined) return null;
-  if (isObject(content) && content.type === "text") return str(content.text);
-  if (Array.isArray(content)) {
-    const text = content
-      .map((c) => (isObject(c) && c.type === "text" ? str(c.text) : null))
-      .filter((p): p is string => p !== null)
-      .join("");
-    return text || null;
-  }
-  return null;
 }
 
 const tag = (label: string) => (
@@ -45,22 +33,6 @@ function acpBody(message: Json): ReactNode {
   const update = sessionUpdate(message);
   if (update) {
     const kind = str(update.sessionUpdate);
-    if (kind === "agent_message_chunk" || kind === "user_message_chunk") {
-      return (
-        <div>
-          {tag(kind === "user_message_chunk" ? "user" : "agent")}
-          <span>{contentText(update.content) ?? stringify(update.content)}</span>
-        </div>
-      );
-    }
-    if (kind === "agent_thought_chunk") {
-      return (
-        <details className="text-text-secondary">
-          <summary className="cursor-pointer text-xs">thought</summary>
-          <div>{contentText(update.content) ?? stringify(update.content)}</div>
-        </details>
-      );
-    }
     if (kind === "tool_call" || kind === "tool_call_update") {
       return (
         <div>
@@ -108,32 +80,95 @@ function recordBody(record: TranscriptRecord): ReactNode {
   return acpBody(record.message);
 }
 
+const CHUNK_LABEL = { agent_message_chunk: "agent", user_message_chunk: "user", agent_thought_chunk: "thought" };
+
+function itemBody(item: TranscriptItem): ReactNode {
+  switch (item.kind) {
+    case "record":
+      return recordBody(item.records[0]);
+    case "chunks":
+      if (item.update === "agent_thought_chunk") {
+        return (
+          <details className="text-text-secondary">
+            <summary className="cursor-pointer text-xs">thought</summary>
+            <div className="whitespace-pre-wrap">{item.text}</div>
+          </details>
+        );
+      }
+      return (
+        <div>
+          {tag(CHUNK_LABEL[item.update])}
+          <span className="whitespace-pre-wrap">{item.text}</span>
+        </div>
+      );
+    case "prompt":
+      // The first prompt carries the contract and inputs; later ones are the human's revise turns.
+      return (
+        <details open={!item.first}>
+          <summary className="cursor-pointer text-xs">
+            {tag("prompt")}
+            <span className="text-text-secondary">{item.first ? "contract and inputs" : "reply"}</span>
+          </summary>
+          <div className="mt-1 whitespace-pre-wrap">{item.text}</div>
+        </details>
+      );
+    case "replay":
+      return (
+        <details className="text-text-secondary">
+          <summary className="cursor-pointer text-xs">
+            {tag("replay")}
+            Loaded session <span className="font-mono">{item.sessionId ?? "?"}</span>: replayed {item.replayed}{" "}
+            {item.replayed === 1 ? "record" : "records"}
+            {!item.done && " (loading)"}
+          </summary>
+          <ol className="mt-1 border-l border-border pl-3">
+            {item.items.map((inner, i) => (
+              <li key={i} className="py-1">
+                {itemBody(inner)}
+              </li>
+            ))}
+          </ol>
+        </details>
+      );
+  }
+}
+
 // Archon's log panel: the attempt transcript. Lifecycle rows, stdio log blocks,
-// parsed ACP messages, and a raw-JSON disclosure per record.
+// parsed ACP messages (session replay, merged chunks and prompts grouped), and a
+// raw-JSON disclosure listing every record behind each row.
 export function WorkflowLogs({ taskRunId }: { taskRunId: string | null }) {
   const { records, error } = useTranscript(taskRunId);
 
   if (!taskRunId) {
     return <p className="p-4 text-sm text-text-tertiary italic">Select a task to view its transcript.</p>;
   }
+  const { model, mode } = selectedConfig(records);
+  const items = groupTranscript(records);
   return (
     <div className="flex h-full flex-col">
       {error && <div className="border-b border-error/40 bg-error/10 px-3 py-2 text-xs text-error">{error}</div>}
+      {(model || mode) && (
+        <div className="border-b border-border px-3 py-1.5 font-mono text-[11px] text-text-secondary">
+          {[model, mode].filter(Boolean).join(" · ")}
+        </div>
+      )}
       <ol className="flex-1 overflow-auto p-3 text-sm">
         {records.length === 0 && !error && (
           <li className="text-text-tertiary italic">No transcript records yet.</li>
         )}
-        {records.map((record, i) => (
+        {items.map((item, i) => (
           <li key={i} className="border-b border-border py-2 last:border-0">
             <div className="flex gap-2">
               <span className="shrink-0 font-mono text-[11px] text-text-tertiary">
-                {formatTime(record.timestamp)}
+                {formatTime(item.records[0].timestamp)}
               </span>
-              <div className="min-w-0 flex-1">{recordBody(record)}</div>
+              <div className="min-w-0 flex-1">{itemBody(item)}</div>
             </div>
             <details className="mt-1 pl-[76px]">
-              <summary className="cursor-pointer text-[11px] text-text-tertiary">raw</summary>
-              {pre(record)}
+              <summary className="cursor-pointer text-[11px] text-text-tertiary">
+                raw{item.records.length > 1 && ` (${item.records.length} records)`}
+              </summary>
+              {pre(item.records.length === 1 ? item.records[0] : item.records)}
             </details>
           </li>
         ))}
