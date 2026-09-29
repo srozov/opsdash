@@ -12,7 +12,7 @@ export type TranscriptItem =
   // one retry after an invalid result; every other prompt is a human's `reply`.
   | { kind: "prompt"; text: string; role: "contract" | "reply" | "repair"; records: [TranscriptRecord] }
   // `records` holds the session/load request, the replayed records and the response
-  // (absent while the load is still in flight); `replayed` counts only the middle.
+  // (absent while the load is unanswered); `replayed` counts the session/update records between.
   | {
       kind: "replay";
       sessionId: string | null;
@@ -109,7 +109,7 @@ export function groupTranscript(records: TranscriptRecord[]): TranscriptItem[] {
       items.push({
         kind: "replay",
         sessionId: str(load.sessionId),
-        replayed: inner.length,
+        replayed: inner.filter((r) => acpMessage(r)?.method === "session/update").length,
         done,
         items: innerItems,
         records: records.slice(i, done ? end + 1 : end),

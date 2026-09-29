@@ -139,6 +139,18 @@ describe("replay", () => {
     expect(replay.kind === "replay" && [replay.done, replay.replayed]).toEqual([false, 1]);
   });
 
+  test("only session/update records count as replayed", () => {
+    const items = groupTranscript([
+      req(1, "session/load", { sessionId: "s" }),
+      chunk("user_message_chunk", "x"),
+      chunk("agent_message_chunk", "y"),
+      res(9),
+      res(1),
+    ]);
+    const replay = items[0]!;
+    expect(replay.kind === "replay" && [replay.replayed, replay.records.length]).toEqual([2, 5]);
+  });
+
   test("a load with no replayed history is an empty replay", () => {
     const items = groupTranscript([req(1, "session/load", { sessionId: "s" }), res(1), prompt(2, "p")]);
     expect(items.map((i) => i.kind)).toEqual(["replay", "prompt"]);
@@ -160,9 +172,9 @@ describe("replay", () => {
   });
 
   test("a response with a different id does not close the load", () => {
-    const items = groupTranscript([req(1, "session/load", { sessionId: "s" }), res(7), res(1)]);
+    const items = groupTranscript([req(1, "session/load", { sessionId: "s" }), res(7), chunk("user_message_chunk", "x"), res(1)]);
     const replay = items[0]!;
-    expect(replay.kind === "replay" && [replay.replayed, replay.done]).toEqual([1, true]);
+    expect(replay.kind === "replay" && [replay.replayed, replay.records.length, replay.done]).toEqual([1, 4, true]);
   });
 });
 
