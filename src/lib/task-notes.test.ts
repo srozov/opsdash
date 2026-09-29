@@ -6,7 +6,10 @@ import runJson from "./__fixtures__/s1-run.json";
 
 const workflow = workflowJson as unknown as Workflow;
 const run = runJson as unknown as RunView;
-const withState = (id: string, state: RunTask["state"]): RunTask => ({ ...run.tasks[id]!, state, attempts: [] });
+// Real S1 tasks. Dagmar records a guard skip as a skipped attempt, so skipped
+// tasks keep their attempts; only ready/pending tasks are built here with none.
+const fixtureTask = (id: string): RunTask => run.tasks[id]!;
+const withState = (id: string, state: RunTask["state"]): RunTask => ({ ...fixtureTask(id), state, attempts: [] });
 
 describe("exitBranchOf", () => {
   test("review, exhausted and gate are the exit branch of fixup → verify", () => {
@@ -31,14 +34,23 @@ describe("stateNotes", () => {
   test("ready non-exit task has no D4 note and no slot text", () => {
     expect(stateNotes(workflow, "done", withState("done", "ready"))).toEqual(["Dependencies settled."]);
   });
-  test("skipped task names the guard and its clauses", () => {
-    expect(stateNotes(workflow, "exhausted", withState("exhausted", "skipped"))).toEqual([
+  test("skipped task (with its skipped attempt) names the guard and its clauses", () => {
+    expect(fixtureTask("exhausted").attempts[0]?.status).toBe("skipped");
+    expect(stateNotes(workflow, "exhausted", fixtureTask("exhausted"))).toEqual([
       "`when` guard was false.",
       "$tasks.verify.output.passed = false",
     ]);
   });
-  test("skipped exit branch gets no D4 note", () => {
-    expect(stateNotes(workflow, "gate", withState("gate", "skipped"))).toHaveLength(2);
+  test("fixup, skipped after a completed attempt, still gets the guard note", () => {
+    const fixup = fixtureTask("fixup");
+    expect(fixup.attempts.map((a) => a.status)).toEqual(["completed", "skipped"]);
+    expect(stateNotes(workflow, "fixup", fixup)).toEqual([
+      "`when` guard was false.",
+      "$tasks.verify.output.passed = false",
+    ]);
+  });
+  test("skipped exit branch (exhausted) gets no D4 note", () => {
+    expect(stateNotes(workflow, "exhausted", fixtureTask("exhausted"))).toHaveLength(2);
   });
   test("pending gate gets the D4 note", () => {
     expect(stateNotes(workflow, "gate", withState("gate", "pending")).at(-1)?.startsWith("Exit branch")).toBe(true);
