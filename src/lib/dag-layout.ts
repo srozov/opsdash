@@ -37,6 +37,9 @@ export interface ExecutionNodeData {
   duration: string | null;
   // Completed attempts of a loop source over its maxVisits (display arithmetic).
   visits: { completed: number; max: number } | null;
+  // Only these nodes render the right-hand loop handles.
+  loopSource: boolean;
+  loopTarget: boolean;
   pending: PendingMarker | null;
   isSelected: boolean;
   [key: string]: unknown;
@@ -110,6 +113,8 @@ export function buildFlow(
   }
   dagre.layout(g);
 
+  const loopTargets = new Set(taskIds.flatMap((id) => workflow.tasks[id]!.loop?.to ?? []));
+
   const nodes: Node[] = taskIds.map((id) => {
     const def = workflow.tasks[id]!;
     const { kind, executor } = nodeKind(id, def, executors);
@@ -134,6 +139,8 @@ export function buildFlow(
             max: def.loop.maxVisits,
           }
         : null,
+      loopSource: def.loop !== undefined,
+      loopTarget: loopTargets.has(id),
       pending: pendingInteraction
         ? { kind: pendingInteraction.kind, label: PENDING_LABEL[pendingInteraction.kind] }
         : null,

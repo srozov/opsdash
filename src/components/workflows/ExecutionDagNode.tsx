@@ -34,7 +34,7 @@ export function ExecutionDagNode({ data }: NodeProps) {
       style={{ width: NODE_WIDTH, height: NODE_HEIGHT, borderLeft: `3px solid ${color}` }}
     >
       <Handle type="target" position={Position.Top} className="!bg-border-bright" />
-      <Handle id="loop-in" type="target" position={Position.Right} className="!bg-accent" />
+      {d.loopTarget && <Handle id="loop-in" type="target" position={Position.Right} className="!bg-accent" />}
       <div className="flex items-center gap-1.5">
         <span className="min-w-0 flex-1 truncate text-sm font-semibold text-text-primary" title={d.taskId}>
           {d.taskId}
@@ -65,7 +65,7 @@ export function ExecutionDagNode({ data }: NodeProps) {
         </span>
       )}
       <Handle type="source" position={Position.Bottom} className="!bg-border-bright" />
-      <Handle id="loop-out" type="source" position={Position.Right} className="!bg-accent" />
+      {d.loopSource && <Handle id="loop-out" type="source" position={Position.Right} className="!bg-accent" />}
     </div>
   );
 }

@@ -50,6 +50,15 @@ describe("buildFlow: definition only", () => {
     expect(loop.label).toBe("loop ≤ 3");
   });
 
+  test("only the loop source and target carry loop handles", () => {
+    const withLoop = nodes.filter((n) => dataOf(nodes, n.id).loopSource || dataOf(nodes, n.id).loopTarget);
+    expect(withLoop.map((n) => n.id).sort()).toEqual(["fixup", "verify"]);
+    expect(dataOf(nodes, "fixup").loopSource).toBe(true);
+    expect(dataOf(nodes, "fixup").loopTarget).toBe(false);
+    expect(dataOf(nodes, "verify").loopTarget).toBe(true);
+    expect(dataOf(nodes, "verify").loopSource).toBe(false);
+  });
+
   test("node kinds and no run overlay", () => {
     expect(dataOf(nodes, "implement").kind).toBe("agent");
     expect(dataOf(nodes, "verify").kind).toBe("process");
