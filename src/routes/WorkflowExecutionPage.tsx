@@ -117,6 +117,7 @@ export function WorkflowExecutionPage() {
                   <NodeInspector
                     run={run}
                     workflow={workflow}
+                    executors={executors}
                     selectedTaskId={taskId}
                     selectedAttemptId={attemptId}
                     onSelectAttempt={setAttemptId}

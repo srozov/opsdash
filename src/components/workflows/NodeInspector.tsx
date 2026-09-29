@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import type { Attempt, Interaction, Json, RunView, TaskDef, Workflow } from "../../dagmar-types.ts";
+import type { Attempt, ExecutorSummary, Interaction, Json, RunView, TaskDef, Workflow } from "../../dagmar-types.ts";
 import { useDagmar } from "../../dagmar/DagmarProvider.tsx";
 import { formatDuration, formatTime, shortId } from "../../format.ts";
 import { clauseText, exitBranchOf, stateNotes } from "../../lib/task-notes.ts";
@@ -27,6 +27,7 @@ function permissionOptions(request: Json): { optionId: string; name?: string }[]
 export function NodeInspector({
   run,
   workflow,
+  executors,
   selectedTaskId,
   selectedAttemptId,
   onSelectAttempt,
@@ -34,6 +35,7 @@ export function NodeInspector({
 }: {
   run: RunView;
   workflow: Workflow;
+  executors: ExecutorSummary[];
   selectedTaskId: string | null;
   selectedAttemptId: string | null;
   onSelectAttempt: (attemptId: string) => void;
@@ -78,7 +80,7 @@ export function NodeInspector({
         <div>depends on: {task.dependsOn.length ? task.dependsOn.join(", ") : "—"}</div>
       </div>
 
-      {def && <Definition workflow={workflow} taskId={selectedTaskId} def={def} onSelectTask={onSelectTask} />}
+      {def && <Definition workflow={workflow} executors={executors} taskId={selectedTaskId} def={def} onSelectTask={onSelectTask} />}
 
       {notes.length > 0 && (
         <div className="space-y-1 text-sm text-text-tertiary italic">
@@ -269,17 +271,27 @@ function AttemptDetail({
   );
 }
 
+// Profile name and its type from executor.list; gate tasks have no profile.
+function executorLabel(def: TaskDef, executors: ExecutorSummary[]): string {
+  if (def.gate) return "gate";
+  const profile = executors.find((e) => e.name === def.executor);
+  if (!profile) throw new Error(`executor profile "${def.executor ?? ""}" is not in executor.list`);
+  return `${profile.name} (${profile.type})`;
+}
+
 const pre =
   "mt-1 overflow-x-auto rounded border border-border bg-surface-inset p-2 font-mono text-[11px] whitespace-pre-wrap break-words";
 
 // Static task definition from workflow.get: what the task is, not what it did.
 function Definition({
   workflow,
+  executors,
   taskId,
   def,
   onSelectTask,
 }: {
   workflow: Workflow;
+  executors: ExecutorSummary[];
   taskId: string;
   def: TaskDef;
   onSelectTask: (taskId: string) => void;
@@ -299,7 +311,7 @@ function Definition({
         Definition
       </summary>
       <div className="space-y-2 border-t border-border p-2 font-mono text-xs text-text-secondary">
-        <div>executor: {def.gate ? "gate" : (def.executor ?? "—")}</div>
+        <div>executor: {executorLabel(def, executors)}</div>
         {def.interactive && <div>interactive: true</div>}
         {def.session?.mode === "fresh" && <div>session: fresh</div>}
         {sessionFrom !== null && (
