@@ -1,0 +1,14 @@
+[
+  {
+    "name": "builder",
+    "type": "acp"
+  },
+  {
+    "name": "check",
+    "type": "process"
+  },
+  {
+    "name": "reviewer",
+    "type": "acp"
+  }
+]

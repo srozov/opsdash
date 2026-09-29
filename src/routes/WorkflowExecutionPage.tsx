@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import type { Attempt } from "../dagmar-types.ts";
-import { useRun } from "../dagmar/DagmarProvider.tsx";
+import { useDagmar, useRun } from "../dagmar/DagmarProvider.tsx";
 import { formatDuration, formatTime, shortId } from "../format.ts";
 import { useNow } from "../lib/useNow.ts";
 import { StatusBadge } from "../components/ui/StatusBadge.tsx";
@@ -24,7 +24,8 @@ const tab = (active: boolean) =>
 // split between the graph (or task list) and the log/detail panel.
 export function WorkflowExecutionPage() {
   const { runId } = useParams();
-  const { run, error } = useRun(runId);
+  const { run, workflow, error } = useRun(runId);
+  const { executors, executorsError, interactions } = useDagmar();
   const [view, setView] = useState<"graph" | "logs">("graph");
   const [taskId, setTaskId] = useState<string | null>(null);
   const [attemptId, setAttemptId] = useState<string | null>(null);
@@ -81,16 +82,25 @@ export function WorkflowExecutionPage() {
       </div>
 
       <div className="min-h-0 flex-1">
-        {run ? (
+        {run && workflow && executors ? (
           <PanelGroup direction="horizontal">
             <Panel defaultSize={60} minSize={30}>
               {view === "graph" ? (
                 <div className="h-full">
-                  <WorkflowDagViewer run={run} selectedTaskId={taskId} onSelect={selectTask} />
+                  <WorkflowDagViewer
+                    workflow={workflow}
+                    run={run}
+                    executors={executors}
+                    interactions={interactions}
+                    selectedTaskId={taskId}
+                    onSelect={selectTask}
+                  />
                 </div>
               ) : (
                 <div className="h-full overflow-auto">
-                  <DagNodeProgress run={run} selectedTaskId={taskId} onSelect={selectTask} />
+                  <DagNodeProgress run={run} selectedTaskId={taskId}
+                    onSelect={selectTask}
+                  />
                 </div>
               )}
             </Panel>
@@ -112,7 +122,7 @@ export function WorkflowExecutionPage() {
             </Panel>
           </PanelGroup>
         ) : (
-          <div className="p-6 text-sm text-text-tertiary">{error ?? "Loading…"}</div>
+          <div className="p-6 text-sm text-text-tertiary">{error ?? executorsError ?? "Loading…"}</div>
         )}
       </div>
     </div>

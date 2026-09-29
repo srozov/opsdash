@@ -1,0 +1,173 @@
+{
+  "id": "review-iteration-loop",
+  "tasks": {
+    "implement": {
+      "executor": "builder",
+      "inputs": {
+        "task": "$run.input.task"
+      },
+      "prompt": "Implement the task given in the inputs in this repository, including tests.\nKeep a short note of your design decisions and anything you were unsure about,\nand put it in your result's output as `notes`.\n",
+      "session": {
+        "mode": "fresh"
+      },
+      "dependsOn": []
+    },
+    "verify": {
+      "executor": "check",
+      "dependsOn": [
+        "implement"
+      ],
+      "inputs": {},
+      "run": [
+        "node",
+        "/ABSOLUTE/PATH/TO/dagmar/examples/verify.example.mjs",
+        "pnpm",
+        "test"
+      ],
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "passed"
+        ],
+        "properties": {
+          "passed": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "fixup": {
+      "executor": "builder",
+      "dependsOn": [
+        "verify",
+        "implement"
+      ],
+      "inputs": {
+        "report": "$tasks.verify.output"
+      },
+      "prompt": "Verification failed; the report is in the inputs. Fix the change so the checks pass.\n",
+      "session": {
+        "mode": "continue",
+        "from": "implement"
+      },
+      "when": [
+        {
+          "ref": "$tasks.verify.output.passed",
+          "equals": false
+        }
+      ],
+      "loop": {
+        "to": "verify",
+        "maxVisits": 3
+      }
+    },
+    "review": {
+      "executor": "reviewer",
+      "dependsOn": [
+        "verify",
+        "implement"
+      ],
+      "inputs": {},
+      "prompt": "You are now the reviewer, not the builder. Review the change made in this session\n(the files are in the working tree). In your output include `verdict`, `concerns`, and\n`on_builder_notes`: which of the builder's stated design decisions or uncertainties you\nagree or disagree with, and why.\n",
+      "session": {
+        "mode": "continue",
+        "from": "implement"
+      },
+      "when": [
+        {
+          "ref": "$tasks.verify.output.passed",
+          "equals": true
+        }
+      ]
+    },
+    "exhausted": {
+      "executor": "check",
+      "dependsOn": [
+        "verify"
+      ],
+      "inputs": {},
+      "run": [
+        "node",
+        "-e",
+        "process.stdin.resume();process.stdin.on('end',()=>console.log(JSON.stringify({outcome:'blocked',message:'verify still failing after maxVisits',output:{}})))"
+      ],
+      "when": [
+        {
+          "ref": "$tasks.verify.output.passed",
+          "equals": false
+        }
+      ]
+    },
+    "gate": {
+      "dependsOn": [
+        "review",
+        "verify"
+      ],
+      "inputs": {},
+      "when": [
+        {
+          "ref": "$tasks.verify.output.passed",
+          "equals": true
+        }
+      ],
+      "gate": {
+        "prompt": "Approve the reviewed change, or revise it interactively with the builder?",
+        "schema": {
+          "type": "object",
+          "required": [
+            "decision"
+          ],
+          "properties": {
+            "decision": {
+              "enum": [
+                "approve",
+                "revise"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "done": {
+      "executor": "check",
+      "dependsOn": [
+        "gate"
+      ],
+      "inputs": {},
+      "run": [
+        "node",
+        "-e",
+        "process.stdin.resume();process.stdin.on('end',()=>console.log(JSON.stringify({outcome:'completed',message:'approved',output:{}})))"
+      ],
+      "when": [
+        {
+          "ref": "$tasks.gate.output.decision",
+          "equals": "approve"
+        }
+      ]
+    },
+    "revise": {
+      "executor": "builder",
+      "dependsOn": [
+        "gate",
+        "implement",
+        "review"
+      ],
+      "inputs": {
+        "review": "$tasks.review.output"
+      },
+      "prompt": "The change was not approved yet; the reviewer's assessment is in the inputs. Ask the user\nwhat they want changed, discuss, and apply the changes. Finish only when the user is satisfied.\n",
+      "interactive": true,
+      "session": {
+        "mode": "continue",
+        "from": "implement"
+      },
+      "when": [
+        {
+          "ref": "$tasks.gate.output.decision",
+          "equals": "revise"
+        }
+      ]
+    }
+  }
+}
