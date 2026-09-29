@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Play } from "lucide-react";
 import type { Json, WorkflowSummary } from "../../dagmar-types.ts";
-import { useDagmar } from "../../dagmar/DagmarProvider.tsx";
+import { useDagmar, withDagmarQuery } from "../../dagmar/DagmarProvider.tsx";
 import { ACTIVE_STATUSES } from "../../lib/runs.ts";
 import { shortId } from "../../format.ts";
 import { Button } from "../ui/Button.tsx";
@@ -37,7 +37,7 @@ export function WorkflowCard({ wf }: { wf: WorkflowSummary }) {
     try {
       const result = await startRun(wf.id, parsed);
       setOpen(false);
-      navigate(`/workflows/runs/${result.workflowRunId}`);
+      navigate(withDagmarQuery(`/workflows/runs/${result.workflowRunId}`));
     } catch (e) {
       setError(e instanceof Error ? e.message : "start failed");
     } finally {
@@ -54,10 +54,15 @@ export function WorkflowCard({ wf }: { wf: WorkflowSummary }) {
             {wf.taskCount} task{wf.taskCount === 1 ? "" : "s"}
           </div>
         </div>
-        <Button variant="primary" disabled={!connected || busy} onClick={() => setOpen((o) => !o)}>
-          <Play className="h-3 w-3" />
-          Start
-        </Button>
+        <div className="flex shrink-0 gap-2">
+          <Button onClick={() => navigate(withDagmarQuery(`/workflows/${encodeURIComponent(wf.id)}`))}>
+            View
+          </Button>
+          <Button variant="primary" disabled={!connected || busy} onClick={() => setOpen((o) => !o)}>
+            <Play className="h-3 w-3" />
+            Start
+          </Button>
+        </div>
       </div>
       <div className="truncate font-mono text-xs text-text-tertiary" title={wf.file}>
         {wf.file}
@@ -70,7 +75,7 @@ export function WorkflowCard({ wf }: { wf: WorkflowSummary }) {
               {shortId(latestRun.id)}
             </span>
           </div>
-          <Button onClick={() => navigate(`/workflows/runs/${latestRun.id}`)}>View run</Button>
+          <Button onClick={() => navigate(withDagmarQuery(`/workflows/runs/${latestRun.id}`))}>View run</Button>
         </div>
       )}
       {open && (

@@ -41,6 +41,13 @@ function resolveDagmarUrl(search: string): { url: string } | { error: string } {
 
 const DAGMAR_TARGET = resolveDagmarUrl(location.search);
 
+// In-app path that keeps the selected daemon: navigation that drops `?dagmar=`
+// would send a reload back to the default daemon.
+export function withDagmarQuery(path: string): string {
+  const raw = new URLSearchParams(location.search).get("dagmar");
+  return raw === null ? path : `${path}?dagmar=${encodeURIComponent(raw)}`;
+}
+
 const msg = (e: unknown): string => (e instanceof Error ? e.message : "request failed");
 
 interface DagmarContextValue {

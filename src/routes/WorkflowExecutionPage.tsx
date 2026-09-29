@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import type { Attempt } from "../dagmar-types.ts";
-import { useDagmar, useRun } from "../dagmar/DagmarProvider.tsx";
+import { useDagmar, useRun, withDagmarQuery } from "../dagmar/DagmarProvider.tsx";
 import { formatDuration, formatTime, shortId } from "../format.ts";
 import { useNow } from "../lib/useNow.ts";
 import { StatusBadge } from "../components/ui/StatusBadge.tsx";
@@ -53,7 +53,7 @@ export function WorkflowExecutionPage() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-center gap-3 border-b border-border px-4 py-2.5">
-        <Link to="/" className="text-text-tertiary hover:text-text-primary">
+        <Link to={withDagmarQuery("/")} className="text-text-tertiary hover:text-text-primary">
           <ArrowLeft className="h-4 w-4" />
         </Link>
         {run ? (

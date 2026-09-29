@@ -2,6 +2,7 @@ import { Routes, Route } from "react-router-dom";
 import { Layout } from "./components/layout/Layout.tsx";
 import { DashboardPage } from "./routes/DashboardPage.tsx";
 import { WorkflowsPage } from "./routes/WorkflowsPage.tsx";
+import { WorkflowDefinitionPage } from "./routes/WorkflowDefinitionPage.tsx";
 import { WorkflowExecutionPage } from "./routes/WorkflowExecutionPage.tsx";
 
 export function App() {
@@ -10,6 +11,7 @@ export function App() {
       <Route element={<Layout />}>
         <Route index element={<DashboardPage />} />
         <Route path="workflows" element={<WorkflowsPage />} />
+        <Route path="workflows/:workflowId" element={<WorkflowDefinitionPage />} />
         <Route path="workflows/runs/:runId" element={<WorkflowExecutionPage />} />
       </Route>
     </Routes>
