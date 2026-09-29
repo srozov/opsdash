@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { useDagmar } from "../../dagmar/DagmarProvider.tsx";
+import { useDagmar, withDagmarQuery } from "../../dagmar/DagmarProvider.tsx";
 import { formatDuration } from "../../format.ts";
 import { useNow } from "../../lib/useNow.ts";
 
@@ -20,10 +20,10 @@ export function TopNav() {
       <div className="flex items-center gap-5">
         <span className="text-sm font-semibold tracking-tight">OpsDash</span>
         <nav className="flex items-center gap-1">
-          <NavLink to="/" end className={tabClass}>
+          <NavLink to={withDagmarQuery("/")} end className={tabClass}>
             Dashboard
           </NavLink>
-          <NavLink to="/workflows" className={tabClass}>
+          <NavLink to={withDagmarQuery("/workflows")} className={tabClass}>
             Workflows
           </NavLink>
         </nav>

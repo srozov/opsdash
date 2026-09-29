@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import type { RunSummary } from "../../dagmar-types.ts";
+import { withDagmarQuery } from "../../dagmar/DagmarProvider.tsx";
 import { formatDuration, formatTime, shortId } from "../../format.ts";
 import { StatusBadge } from "../ui/StatusBadge.tsx";
 
@@ -27,7 +28,7 @@ export function WorkflowHistoryTable({ runs }: { runs: RunSummary[] }) {
             <tr
               key={run.id}
               className="cursor-pointer border-b border-border last:border-0 hover:bg-surface-hover"
-              onClick={() => navigate(`/workflows/runs/${run.id}`)}
+              onClick={() => navigate(withDagmarQuery(`/workflows/runs/${run.id}`))}
             >
               <td className="px-3 py-2 text-text-primary">{run.workflowId}</td>
               <td className="px-3 py-2 font-mono text-xs text-text-secondary" title={run.id}>

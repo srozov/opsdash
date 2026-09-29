@@ -1,0 +1,247 @@
+{
+  "id": "wr_9d298b56-5384-4fb1-8297-ce9daa59821a",
+  "workflowId": "review-iteration-loop",
+  "input": {
+    "task": "add a greeting"
+  },
+  "status": "completed",
+  "startedAt": "2026-09-29T21:49:33.682Z",
+  "updatedAt": "2026-09-29T21:49:46.538Z",
+  "endedAt": "2026-09-29T21:49:46.538Z",
+  "sequence": 94,
+  "tasks": {
+    "implement": {
+      "dependsOn": [],
+      "executor": "builder",
+      "state": "completed",
+      "attempts": [
+        {
+          "id": "tr_b49e1063-04f7-41ca-b4fb-65d14f0e9c8c",
+          "attempt": 1,
+          "status": "completed",
+          "result": {
+            "outcome": "completed",
+            "message": "implemented",
+            "output": {
+              "notes": "Fake implementation; kept the design minimal."
+            }
+          },
+          "error": null,
+          "acpSessionId": "fake-552777-1790718573741",
+          "startedAt": "2026-09-29T21:49:33.691Z",
+          "updatedAt": "2026-09-29T21:49:33.766Z",
+          "endedAt": "2026-09-29T21:49:33.766Z"
+        }
+      ]
+    },
+    "verify": {
+      "dependsOn": [
+        "implement"
+      ],
+      "executor": "check",
+      "state": "completed",
+      "attempts": [
+        {
+          "id": "tr_35504211-eaaf-4849-870a-133a804f2f6d",
+          "attempt": 1,
+          "status": "completed",
+          "result": {
+            "outcome": "completed",
+            "message": "verify failed (seeded)",
+            "output": {
+              "passed": false,
+              "exitCode": 0,
+              "seeded": true,
+              "summary": "\n> t6-target@ test /tmp/opsdash-t6-fixture/target\n> node -e \"\"\n\n"
+            }
+          },
+          "error": null,
+          "acpSessionId": null,
+          "startedAt": "2026-09-29T21:49:33.775Z",
+          "updatedAt": "2026-09-29T21:49:34.271Z",
+          "endedAt": "2026-09-29T21:49:34.271Z"
+        },
+        {
+          "id": "tr_f0f79e59-2a51-45ad-a669-b543d74d243e",
+          "attempt": 2,
+          "status": "completed",
+          "result": {
+            "outcome": "completed",
+            "message": "verify passed",
+            "output": {
+              "passed": true,
+              "exitCode": 0,
+              "seeded": false,
+              "summary": "\n> t6-target@ test /tmp/opsdash-t6-fixture/target\n> node -e \"\"\n\n"
+            }
+          },
+          "error": null,
+          "acpSessionId": null,
+          "startedAt": "2026-09-29T21:49:34.344Z",
+          "updatedAt": "2026-09-29T21:49:34.772Z",
+          "endedAt": "2026-09-29T21:49:34.772Z"
+        }
+      ]
+    },
+    "fixup": {
+      "dependsOn": [
+        "verify",
+        "implement"
+      ],
+      "executor": "builder",
+      "state": "skipped",
+      "attempts": [
+        {
+          "id": "tr_959cd957-dafb-447e-b9ec-4a12fb7d95df",
+          "attempt": 1,
+          "status": "completed",
+          "result": {
+            "outcome": "completed",
+            "message": "fixup applied",
+            "output": {
+              "fixed": true
+            }
+          },
+          "error": null,
+          "acpSessionId": "fake-552777-1790718573741",
+          "startedAt": "2026-09-29T21:49:34.277Z",
+          "updatedAt": "2026-09-29T21:49:34.338Z",
+          "endedAt": "2026-09-29T21:49:34.338Z"
+        },
+        {
+          "id": "tr_aa950476-ae47-46cc-86bd-da0bb5ceffc7",
+          "attempt": 2,
+          "status": "skipped",
+          "result": null,
+          "error": null,
+          "acpSessionId": null,
+          "startedAt": "2026-09-29T21:49:34.779Z",
+          "updatedAt": "2026-09-29T21:49:34.779Z",
+          "endedAt": "2026-09-29T21:49:34.779Z"
+        }
+      ]
+    },
+    "review": {
+      "dependsOn": [
+        "verify",
+        "implement"
+      ],
+      "executor": "reviewer",
+      "state": "completed",
+      "attempts": [
+        {
+          "id": "tr_7b95471c-581f-4609-ae72-0e226ffb82f7",
+          "attempt": 1,
+          "status": "completed",
+          "result": {
+            "outcome": "completed",
+            "message": "review done",
+            "output": {
+              "verdict": "approve",
+              "concerns": [],
+              "on_builder_notes": "Agree with the builder's stated decision to keep the design minimal."
+            }
+          },
+          "error": null,
+          "acpSessionId": "fake-552777-1790718573741",
+          "startedAt": "2026-09-29T21:49:34.779Z",
+          "updatedAt": "2026-09-29T21:49:34.838Z",
+          "endedAt": "2026-09-29T21:49:34.838Z"
+        }
+      ]
+    },
+    "exhausted": {
+      "dependsOn": [
+        "verify"
+      ],
+      "executor": "check",
+      "state": "skipped",
+      "attempts": [
+        {
+          "id": "tr_2b6daf1d-758f-40f5-83c9-9f63fce5ae3c",
+          "attempt": 1,
+          "status": "skipped",
+          "result": null,
+          "error": null,
+          "acpSessionId": null,
+          "startedAt": "2026-09-29T21:49:34.779Z",
+          "updatedAt": "2026-09-29T21:49:34.779Z",
+          "endedAt": "2026-09-29T21:49:34.779Z"
+        }
+      ]
+    },
+    "gate": {
+      "dependsOn": [
+        "review",
+        "verify"
+      ],
+      "executor": "gate",
+      "state": "completed",
+      "attempts": [
+        {
+          "id": "tr_ca2a4757-6ec7-4814-9612-e580edc43e6d",
+          "attempt": 1,
+          "status": "completed",
+          "result": {
+            "outcome": "completed",
+            "message": "Approve the reviewed change, or revise it interactively with the builder?",
+            "output": {
+              "decision": "approve"
+            }
+          },
+          "error": null,
+          "acpSessionId": null,
+          "startedAt": "2026-09-29T21:49:34.843Z",
+          "updatedAt": "2026-09-29T21:49:46.477Z",
+          "endedAt": "2026-09-29T21:49:46.477Z"
+        }
+      ]
+    },
+    "done": {
+      "dependsOn": [
+        "gate"
+      ],
+      "executor": "check",
+      "state": "completed",
+      "attempts": [
+        {
+          "id": "tr_0fc0f7bc-5920-4f74-9229-fa2783c5c403",
+          "attempt": 1,
+          "status": "completed",
+          "result": {
+            "outcome": "completed",
+            "message": "approved",
+            "output": {}
+          },
+          "error": null,
+          "acpSessionId": null,
+          "startedAt": "2026-09-29T21:49:46.484Z",
+          "updatedAt": "2026-09-29T21:49:46.538Z",
+          "endedAt": "2026-09-29T21:49:46.538Z"
+        }
+      ]
+    },
+    "revise": {
+      "dependsOn": [
+        "gate",
+        "implement",
+        "review"
+      ],
+      "executor": "builder",
+      "state": "skipped",
+      "attempts": [
+        {
+          "id": "tr_223a5bf6-69d3-4d3e-9ad4-41f06b9fcce4",
+          "attempt": 1,
+          "status": "skipped",
+          "result": null,
+          "error": null,
+          "acpSessionId": null,
+          "startedAt": "2026-09-29T21:49:46.484Z",
+          "updatedAt": "2026-09-29T21:49:46.484Z",
+          "endedAt": "2026-09-29T21:49:46.484Z"
+        }
+      ]
+    }
+  }
+}

@@ -11,6 +11,7 @@ import {
 import { DagmarClient } from "../dagmar-client.ts";
 import type {
   DagmarEvent,
+  ExecutorSummary,
   Interaction,
   Json,
   PingResult,
@@ -18,6 +19,7 @@ import type {
   RunView,
   TranscriptReadResult,
   TranscriptRecord,
+  Workflow,
   WorkflowListResult,
 } from "../dagmar-types.ts";
 
@@ -39,6 +41,13 @@ function resolveDagmarUrl(search: string): { url: string } | { error: string } {
 
 const DAGMAR_TARGET = resolveDagmarUrl(location.search);
 
+// In-app path that keeps the selected daemon: navigation that drops `?dagmar=`
+// would send a reload back to the default daemon.
+export function withDagmarQuery(path: string): string {
+  const raw = new URLSearchParams(location.search).get("dagmar");
+  return raw === null ? path : `${path}?dagmar=${encodeURIComponent(raw)}`;
+}
+
 const msg = (e: unknown): string => (e instanceof Error ? e.message : "request failed");
 
 interface DagmarContextValue {
@@ -48,6 +57,8 @@ interface DagmarContextValue {
   ping: PingResult | null;
   workflows: WorkflowListResult | null;
   workflowsError: string | null;
+  executors: ExecutorSummary[] | null;
+  executorsError: string | null;
   runs: RunSummary[];
   runsError: string | null;
   interactions: Interaction[];
@@ -74,6 +85,8 @@ export function DagmarProvider({ children }: { children: ReactNode }) {
   const [ping, setPing] = useState<PingResult | null>(null);
   const [workflows, setWorkflows] = useState<WorkflowListResult | null>(null);
   const [workflowsError, setWorkflowsError] = useState<string | null>(null);
+  const [executors, setExecutors] = useState<ExecutorSummary[] | null>(null);
+  const [executorsError, setExecutorsError] = useState<string | null>(null);
   const [runs, setRuns] = useState<RunSummary[]>([]);
   const [runsError, setRunsError] = useState<string | null>(null);
   const [interactions, setInteractions] = useState<Interaction[]>([]);
@@ -117,6 +130,14 @@ export function DagmarProvider({ children }: { children: ReactNode }) {
           setWorkflowsError(null);
         } catch (e) {
           setWorkflowsError(msg(e));
+        }
+      })(),
+      (async () => {
+        try {
+          setExecutors(await c.request<ExecutorSummary[]>("executor.list"));
+          setExecutorsError(null);
+        } catch (e) {
+          setExecutorsError(msg(e));
         }
       })(),
       refreshRuns(),
@@ -211,6 +232,8 @@ export function DagmarProvider({ children }: { children: ReactNode }) {
       ping,
       workflows,
       workflowsError,
+      executors,
+      executorsError,
       runs,
       runsError,
       interactions,
@@ -231,6 +254,8 @@ export function DagmarProvider({ children }: { children: ReactNode }) {
       ping,
       workflows,
       workflowsError,
+      executors,
+      executorsError,
       runs,
       runsError,
       interactions,
@@ -262,24 +287,30 @@ export function useDagmar(): DagmarContextValue {
   return ctx;
 }
 
-// Load one run's full RunView and keep it fresh from events for that run.
+// Load one run's full RunView and its workflow definition, and keep both fresh
+// from events for that run. Dagmar re-reads the workflow file on every
+// scheduling step, so the definition is reloaded with the run, never cached.
+// If either request fails, `error` is set and the last good values are kept
+// (a failure to load the definition is not papered over with a RunView-only view).
 export function useRun(runId: string | undefined): {
   run: RunView | null;
+  workflow: Workflow | null;
   error: string | null;
   reload: () => Promise<void>;
 } {
   const { client, subscribe, epoch } = useDagmar();
-  const [run, setRun] = useState<RunView | null>(null);
+  const [state, setState] = useState<{ run: RunView; workflow: Workflow } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!runId) {
-      setRun(null);
+      setState(null);
       return;
     }
     try {
-      const r = await client.request<RunView>("run.get", { workflowRunId: runId });
-      setRun(r);
+      const run = await client.request<RunView>("run.get", { workflowRunId: runId });
+      const workflow = await client.request<Workflow>("workflow.get", { workflowId: run.workflowId });
+      setState({ run, workflow });
       setError(null);
     } catch (e) {
       setError(msg(e));
@@ -304,7 +335,37 @@ export function useRun(runId: string | undefined): {
     });
   }, [subscribe, runId, load]);
 
-  return { run, error, reload: load };
+  return { run: state?.run ?? null, workflow: state?.workflow ?? null, error, reload: load };
+}
+
+// Load one workflow definition (no run), e.g. for the definition page.
+export function useWorkflow(workflowId: string | undefined): {
+  workflow: Workflow | null;
+  error: string | null;
+} {
+  const { client, epoch } = useDagmar();
+  const [workflow, setWorkflow] = useState<Workflow | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setWorkflow(null);
+    setError(null);
+    if (!workflowId) return;
+    let cancelled = false;
+    client
+      .request<Workflow>("workflow.get", { workflowId })
+      .then((w) => {
+        if (!cancelled) setWorkflow(w);
+      })
+      .catch((e) => {
+        if (!cancelled) setError(msg(e));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [client, workflowId, epoch]);
+
+  return { workflow, error };
 }
 
 // Load and incrementally append one attempt's transcript.

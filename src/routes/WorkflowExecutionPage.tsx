@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import type { Attempt } from "../dagmar-types.ts";
-import { useRun } from "../dagmar/DagmarProvider.tsx";
+import { useDagmar, useRun, withDagmarQuery } from "../dagmar/DagmarProvider.tsx";
 import { formatDuration, formatTime, shortId } from "../format.ts";
 import { useNow } from "../lib/useNow.ts";
 import { StatusBadge } from "../components/ui/StatusBadge.tsx";
@@ -24,7 +24,8 @@ const tab = (active: boolean) =>
 // split between the graph (or task list) and the log/detail panel.
 export function WorkflowExecutionPage() {
   const { runId } = useParams();
-  const { run, error } = useRun(runId);
+  const { run, workflow, error } = useRun(runId);
+  const { executors, executorsError, interactions } = useDagmar();
   const [view, setView] = useState<"graph" | "logs">("graph");
   const [taskId, setTaskId] = useState<string | null>(null);
   const [attemptId, setAttemptId] = useState<string | null>(null);
@@ -52,7 +53,7 @@ export function WorkflowExecutionPage() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-center gap-3 border-b border-border px-4 py-2.5">
-        <Link to="/" className="text-text-tertiary hover:text-text-primary">
+        <Link to={withDagmarQuery("/")} className="text-text-tertiary hover:text-text-primary">
           <ArrowLeft className="h-4 w-4" />
         </Link>
         {run ? (
@@ -71,6 +72,12 @@ export function WorkflowExecutionPage() {
         )}
       </div>
 
+      {run && error && (
+        <div role="alert" className="border-b border-error/40 bg-error/10 px-4 py-2 text-sm text-error">
+          Could not refresh this run; the graph below may be stale. {error}
+        </div>
+      )}
+
       <div className="flex items-center gap-1 border-b border-border px-4 py-1.5">
         <button className={tab(view === "graph")} onClick={() => setView("graph")}>
           Graph
@@ -81,16 +88,25 @@ export function WorkflowExecutionPage() {
       </div>
 
       <div className="min-h-0 flex-1">
-        {run ? (
+        {run && workflow && executors ? (
           <PanelGroup direction="horizontal">
             <Panel defaultSize={60} minSize={30}>
               {view === "graph" ? (
                 <div className="h-full">
-                  <WorkflowDagViewer run={run} selectedTaskId={taskId} onSelect={selectTask} />
+                  <WorkflowDagViewer
+                    workflow={workflow}
+                    run={run}
+                    executors={executors}
+                    interactions={interactions}
+                    selectedTaskId={taskId}
+                    onSelect={selectTask}
+                  />
                 </div>
               ) : (
                 <div className="h-full overflow-auto">
-                  <DagNodeProgress run={run} selectedTaskId={taskId} onSelect={selectTask} />
+                  <DagNodeProgress run={run} selectedTaskId={taskId}
+                    onSelect={selectTask}
+                  />
                 </div>
               )}
             </Panel>
@@ -100,9 +116,12 @@ export function WorkflowExecutionPage() {
                 <div className="max-h-[50%] shrink-0 overflow-auto border-b border-border">
                   <NodeInspector
                     run={run}
+                    workflow={workflow}
+                    executors={executors}
                     selectedTaskId={taskId}
                     selectedAttemptId={attemptId}
                     onSelectAttempt={setAttemptId}
+                    onSelectTask={selectTask}
                   />
                 </div>
                 <div className="min-h-0 flex-1">
@@ -112,7 +131,7 @@ export function WorkflowExecutionPage() {
             </Panel>
           </PanelGroup>
         ) : (
-          <div className="p-6 text-sm text-text-tertiary">{error ?? "Loading…"}</div>
+          <div className="p-6 text-sm text-text-tertiary">{error ?? executorsError ?? "Loading…"}</div>
         )}
       </div>
     </div>
