@@ -53,7 +53,7 @@ describe("groupTranscript on the S1 fixup attempt", () => {
     const prompts = items.filter((i) => i.kind === "prompt");
     expect(prompts).toHaveLength(1);
     const p = prompts[0]!;
-    expect(p.kind === "prompt" && p.first).toBe(true);
+    expect(p.kind === "prompt" && p.role).toBe("contract");
     expect(p.kind === "prompt" && p.text.startsWith("Verification failed")).toBe(true);
   });
 
@@ -102,12 +102,23 @@ describe("prompts", () => {
     res(3),
   ];
 
-  test("only the first prompt is marked first; later prompts are human turns", () => {
+  test("the first prompt is the contract; later prompts are human replies", () => {
     const prompts = groupTranscript(revise).filter((i) => i.kind === "prompt");
-    expect(prompts.map((p) => p.kind === "prompt" && [p.first, p.text])).toEqual([
-      [true, "contract and inputs"],
-      [false, "please rename it"],
+    expect(prompts.map((p) => p.kind === "prompt" && [p.role, p.text])).toEqual([
+      ["contract", "contract and inputs"],
+      ["reply", "please rename it"],
     ]);
+  });
+
+  test("a prompt right after acp_result_repair is Dagmar's repair turn, not a reply", () => {
+    const prompts = groupTranscript([
+      prompt(2, "contract and inputs"),
+      res(2),
+      lifecycle("acp_result_repair", { message: "bad json" }),
+      prompt(3, "Your reply was not valid JSON"),
+      res(3),
+    ]).filter((i) => i.kind === "prompt");
+    expect(prompts.map((p) => p.kind === "prompt" && p.role)).toEqual(["contract", "repair"]);
   });
 
   test("the conversation reads as prompt, agent, prompt, agent", () => {

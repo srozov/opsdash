@@ -102,12 +102,12 @@ function itemBody(item: TranscriptItem): ReactNode {
         </div>
       );
     case "prompt":
-      // The first prompt carries the contract and inputs; later ones are the human's revise turns.
+      // The contract and Dagmar's repair retry start collapsed; the human's revise turns are open.
       return (
-        <details open={!item.first}>
+        <details open={item.role === "reply"}>
           <summary className="cursor-pointer text-xs">
             {tag("prompt")}
-            <span className="text-text-secondary">{item.first ? "contract and inputs" : "reply"}</span>
+            <span className="text-text-secondary">{item.role === "contract" ? "contract and inputs" : item.role}</span>
           </summary>
           <div className="mt-1 whitespace-pre-wrap">{item.text}</div>
         </details>

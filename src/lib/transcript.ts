@@ -8,8 +8,9 @@ export type ChunkKind = "agent_message_chunk" | "agent_thought_chunk" | "user_me
 export type TranscriptItem =
   | { kind: "record"; records: [TranscriptRecord] }
   | { kind: "chunks"; update: ChunkKind; text: string; records: TranscriptRecord[] }
-  // `first` is the attempt's first prompt: the contract and inputs, not a human turn.
-  | { kind: "prompt"; text: string; first: boolean; records: [TranscriptRecord] }
+  // `contract` is the attempt's first prompt (contract and inputs); `repair` is Dagmar's
+  // one retry after an invalid result; every other prompt is a human's `reply`.
+  | { kind: "prompt"; text: string; role: "contract" | "reply" | "repair"; records: [TranscriptRecord] }
   // `records` holds the session/load request, the replayed records and the response
   // (absent while the load is still in flight); `replayed` counts only the middle.
   | {
@@ -118,7 +119,10 @@ export function groupTranscript(records: TranscriptRecord[]): TranscriptItem[] {
     const prompt = request(record, "session/prompt");
     const text = prompt ? contentText(prompt.prompt) : null;
     if (text !== null) {
-      items.push({ kind: "prompt", text, first: prompts === 0, records: [record] });
+      const prev = records[i - 1];
+      const repair = prev?.type === "lifecycle" && prev.event === "acp_result_repair";
+      const role = prompts === 0 ? "contract" : repair ? "repair" : "reply";
+      items.push({ kind: "prompt", text, role, records: [record] });
       prompts++;
       continue;
     }
