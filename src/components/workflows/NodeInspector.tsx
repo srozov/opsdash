@@ -62,6 +62,9 @@ export function NodeInspector({
   };
 
   const def = workflow.tasks[selectedTaskId];
+  // Dagmar records a guard skip as a skipped attempt, so a skipped task has attempts too.
+  const notes =
+    task.attempts.length === 0 || task.state === "skipped" ? stateNotes(workflow, selectedTaskId, task) : [];
   const attempt = task.attempts.find((a) => a.id === selectedAttemptId) ?? null;
 
   return (
@@ -77,13 +80,15 @@ export function NodeInspector({
 
       {def && <Definition workflow={workflow} taskId={selectedTaskId} def={def} onSelectTask={onSelectTask} />}
 
-      {task.attempts.length === 0 ? (
+      {notes.length > 0 && (
         <div className="space-y-1 text-sm text-text-tertiary italic">
-          {stateNotes(workflow, selectedTaskId, task).map((n) => (
-            <p key={n}>{n}</p>
+          {notes.map((n, i) => (
+            <p key={i}>{n}</p>
           ))}
         </div>
-      ) : (
+      )}
+
+      {task.attempts.length > 0 && (
         <>
           <div className="flex flex-wrap gap-1.5">
             {task.attempts.map((a) => (
