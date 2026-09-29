@@ -146,6 +146,19 @@ describe("replay", () => {
     expect(replay.kind === "replay" && replay.replayed).toBe(0);
   });
 
+  test("an unanswered load ends at the first lifecycle record, which stays outside it", () => {
+    const items = groupTranscript([
+      req(1, "session/load", { sessionId: "s" }),
+      chunk("user_message_chunk", "x"),
+      lifecycle("acp_process_exited", { code: 1 }),
+      chunk("agent_message_chunk", "y"),
+    ]);
+    expect(items.map((i) => i.kind)).toEqual(["replay", "record", "chunks"]);
+    const replay = items[0]!;
+    expect(replay.kind === "replay" && [replay.done, replay.replayed, replay.records.length]).toEqual([false, 1, 2]);
+    expect(items.flatMap((i) => i.records)).toHaveLength(4);
+  });
+
   test("a response with a different id does not close the load", () => {
     const items = groupTranscript([req(1, "session/load", { sessionId: "s" }), res(7), res(1)]);
     const replay = items[0]!;

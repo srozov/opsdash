@@ -99,8 +99,10 @@ export function groupTranscript(records: TranscriptRecord[]): TranscriptItem[] {
     if (load) {
       const id = acpMessage(record)!.id;
       let end = i + 1;
-      while (end < records.length && !isResponseTo(records[end]!, id)) end++;
-      const done = end < records.length;
+      // A lifecycle record (e.g. acp_process_exited) is Dagmar's, not replay: it ends a load
+      // that never got a response, so the reason stays visible outside the disclosure.
+      while (end < records.length && records[end]!.type !== "lifecycle" && !isResponseTo(records[end]!, id)) end++;
+      const done = end < records.length && records[end]!.type !== "lifecycle";
       const inner = records.slice(i + 1, end);
       const innerItems: TranscriptItem[] = [];
       for (const r of inner) pushRecord(innerItems, r);
