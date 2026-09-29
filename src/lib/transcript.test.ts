@@ -2,9 +2,12 @@ import { describe, expect, test } from "bun:test";
 import type { Json, TranscriptRecord } from "../dagmar-types.ts";
 import { groupTranscript, selectedConfig } from "./transcript.ts";
 import fixupJson from "./__fixtures__/s1-fixup-transcript.json";
+import reviseJson from "./__fixtures__/s3-revise-transcript.json";
 
 // Captured from the S1 fixup attempt of the verification fixture (`raw` stripped).
 const fixup = fixupJson as unknown as TranscriptRecord[];
+// Captured from the S3 revise attempt: gate answered `revise`, then two human turns (`raw` stripped).
+const revise = reviseJson as unknown as TranscriptRecord[];
 
 const t = "2026-09-29T21:34:42.000Z";
 const req = (id: number, method: string, params: Json): TranscriptRecord => ({
@@ -88,26 +91,30 @@ describe("chunks", () => {
 });
 
 describe("prompts", () => {
-  // An S3-style revise attempt: load, contract prompt, agent question, human reply, envelope.
-  const revise = [
-    req(1, "session/load", { sessionId: "s" }),
-    chunk("agent_message_chunk", "old"),
-    res(1),
-    prompt(2, "contract and inputs"),
-    chunk("agent_message_chunk", "What "),
-    chunk("agent_message_chunk", "changed?"),
-    res(2),
-    prompt(3, "please rename it"),
-    chunk("agent_message_chunk", "done"),
-    res(3),
-  ];
-
   test("the first prompt is the contract; later prompts are human replies", () => {
     const prompts = groupTranscript(revise).filter((i) => i.kind === "prompt");
-    expect(prompts.map((p) => p.kind === "prompt" && [p.role, p.text])).toEqual([
-      ["contract", "contract and inputs"],
-      ["reply", "please rename it"],
+    expect(prompts.map((p) => p.kind === "prompt" && [p.role, p.text.slice(0, 31)])).toEqual([
+      ["contract", "The change was not approved yet"],
+      ["reply", "please rename it, round 1"],
+      ["reply", "please rename it, round 2"],
     ]);
+  });
+
+  test("the S3 revise attempt reads as replay, then prompt / agent / suspended turns", () => {
+    const items = groupTranscript(revise);
+    const kinds = items.map((i) => i.kind);
+    expect(kinds.slice(kinds.indexOf("replay"))).toEqual([
+      "replay", "prompt", "chunks", "chunks", "record", "record",
+      "prompt", "chunks", "record", "record",
+      "prompt", "chunks", "record", "record", "record",
+    ]);
+    const agent = items.filter((i) => i.kind === "chunks" && i.update === "agent_message_chunk");
+    expect(agent.map((i) => i.kind === "chunks" && i.text)).toEqual([
+      "What would you like changed?",
+      'Applied your change: "please rename it, round 1". Anything else?',
+      '{"outcome":"completed","message":"revised with the user","output":{"turns":3}}',
+    ]);
+    expect(items.flatMap((i) => i.records)).toEqual(revise);
   });
 
   test("a prompt right after acp_result_repair is Dagmar's repair turn, not a reply", () => {
@@ -119,11 +126,6 @@ describe("prompts", () => {
       res(3),
     ]).filter((i) => i.kind === "prompt");
     expect(prompts.map((p) => p.kind === "prompt" && p.role)).toEqual(["contract", "repair"]);
-  });
-
-  test("the conversation reads as prompt, agent, prompt, agent", () => {
-    const kinds = groupTranscript(revise).map((i) => i.kind);
-    expect(kinds).toEqual(["replay", "prompt", "chunks", "record", "prompt", "chunks", "record"]);
   });
 
   test("a prompt with no text blocks stays a generic row", () => {
