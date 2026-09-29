@@ -1,8 +1,10 @@
 import type { RunTask, TaskDef, Workflow } from "../dagmar-types.ts";
 
 // Loop that `taskId` is the exit branch of, from the definition only (plan D4).
-// The exit branch is every direct dependent of the loop target except the loop
-// source itself: it is decided once the loop is final.
+// Heuristic: Dagmar has no exit-branch concept, so this treats every direct
+// dependent of the loop target except the loop source as one. That fits the
+// example workflow (review, exhausted, gate) but would also match an unrelated
+// task that merely depends on the target.
 export function exitBranchOf(workflow: Workflow, taskId: string): { from: string; to: string } | null {
   for (const [from, def] of Object.entries(workflow.tasks)) {
     if (!def.loop) continue;
