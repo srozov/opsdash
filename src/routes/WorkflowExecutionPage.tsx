@@ -72,6 +72,12 @@ export function WorkflowExecutionPage() {
         )}
       </div>
 
+      {run && error && (
+        <div role="alert" className="border-b border-error/40 bg-error/10 px-4 py-2 text-sm text-error">
+          Could not refresh this run; the graph below may be stale. {error}
+        </div>
+      )}
+
       <div className="flex items-center gap-1 border-b border-border px-4 py-1.5">
         <button className={tab(view === "graph")} onClick={() => setView("graph")}>
           Graph
