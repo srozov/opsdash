@@ -116,9 +116,11 @@ export function WorkflowExecutionPage() {
                 <div className="max-h-[50%] shrink-0 overflow-auto border-b border-border">
                   <NodeInspector
                     run={run}
+                    workflow={workflow}
                     selectedTaskId={taskId}
                     selectedAttemptId={attemptId}
                     onSelectAttempt={setAttemptId}
+                    onSelectTask={selectTask}
                   />
                 </div>
                 <div className="min-h-0 flex-1">

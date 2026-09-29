@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from "react";
-import type { Attempt, Interaction, Json, RunTask, RunView } from "../../dagmar-types.ts";
+import type { Attempt, Interaction, Json, RunView, TaskDef, Workflow } from "../../dagmar-types.ts";
 import { useDagmar } from "../../dagmar/DagmarProvider.tsx";
 import { formatDuration, formatTime, shortId } from "../../format.ts";
+import { clauseText, exitBranchOf, stateNotes } from "../../lib/task-notes.ts";
 import { StatusBadge } from "../ui/StatusBadge.tsx";
 import { Button } from "../ui/Button.tsx";
 
@@ -21,35 +22,22 @@ function permissionOptions(request: Json): { optionId: string; name?: string }[]
   return out;
 }
 
-function describeState(task: RunTask): string {
-  switch (task.state) {
-    case "pending":
-      return "Pending: not yet evaluated for readiness.";
-    case "ready":
-      return "Ready: dependencies satisfied, waiting for an executor slot.";
-    case "blocked_by_dependency":
-      return "Blocked by dependency: an upstream task did not complete.";
-    case "blocked":
-      return "Blocked: the task cannot proceed.";
-    case "cancelled":
-      return "Cancelled before any attempt started.";
-    default:
-      return `State: ${task.state} (no attempts recorded).`;
-  }
-}
-
 // Selected task detail: attempts, result/error/ACP session, task cancellation,
 // and pending interactions with answer controls.
 export function NodeInspector({
   run,
+  workflow,
   selectedTaskId,
   selectedAttemptId,
   onSelectAttempt,
+  onSelectTask,
 }: {
   run: RunView;
+  workflow: Workflow;
   selectedTaskId: string | null;
   selectedAttemptId: string | null;
   onSelectAttempt: (attemptId: string) => void;
+  onSelectTask: (taskId: string) => void;
 }) {
   const { interactions, cancelTask, answerInteraction, connected } = useDagmar();
   const [busy, setBusy] = useState(false);
@@ -73,6 +61,7 @@ export function NodeInspector({
     }
   };
 
+  const def = workflow.tasks[selectedTaskId];
   const attempt = task.attempts.find((a) => a.id === selectedAttemptId) ?? null;
 
   return (
@@ -86,8 +75,14 @@ export function NodeInspector({
         <div>depends on: {task.dependsOn.length ? task.dependsOn.join(", ") : "—"}</div>
       </div>
 
+      {def && <Definition workflow={workflow} taskId={selectedTaskId} def={def} onSelectTask={onSelectTask} />}
+
       {task.attempts.length === 0 ? (
-        <p className="text-sm text-text-tertiary italic">{describeState(task)}</p>
+        <div className="space-y-1 text-sm text-text-tertiary italic">
+          {stateNotes(workflow, selectedTaskId, task).map((n) => (
+            <p key={n}>{n}</p>
+          ))}
+        </div>
       ) : (
         <>
           <div className="flex flex-wrap gap-1.5">
@@ -95,7 +90,7 @@ export function NodeInspector({
               <button
                 key={a.id}
                 onClick={() => onSelectAttempt(a.id)}
-                title={a.id}
+                title={a.result?.message ?? a.id}
                 className={`flex items-center gap-1.5 rounded-md border px-2 py-1 font-mono text-xs ${
                   a.id === selectedAttemptId
                     ? "border-accent bg-surface-elevated text-text-primary"
@@ -266,5 +261,84 @@ function AttemptDetail({
         </div>
       )}
     </div>
+  );
+}
+
+const pre =
+  "mt-1 overflow-x-auto rounded border border-border bg-surface-inset p-2 font-mono text-[11px] whitespace-pre-wrap break-words";
+
+// Static task definition from workflow.get: what the task is, not what it did.
+function Definition({
+  workflow,
+  taskId,
+  def,
+  onSelectTask,
+}: {
+  workflow: Workflow;
+  taskId: string;
+  def: TaskDef;
+  onSelectTask: (taskId: string) => void;
+}) {
+  const exit = exitBranchOf(workflow, taskId);
+  const sessionFrom = def.session?.mode === "continue" ? def.session.from : null;
+  const json = (v: unknown) => <pre className={pre}>{JSON.stringify(v, null, 2)}</pre>;
+  const sub = (label: string, body: ReactNode) => (
+    <div>
+      <div className="text-text-tertiary">{label}</div>
+      {body}
+    </div>
+  );
+  return (
+    <details className="rounded border border-border">
+      <summary className="cursor-pointer px-2 py-1 text-xs font-semibold uppercase text-text-tertiary">
+        Definition
+      </summary>
+      <div className="space-y-2 border-t border-border p-2 font-mono text-xs text-text-secondary">
+        <div>executor: {def.gate ? "gate" : (def.executor ?? "—")}</div>
+        {def.interactive && <div>interactive: true</div>}
+        {def.session?.mode === "fresh" && <div>session: fresh</div>}
+        {sessionFrom !== null && (
+          <div>
+            session: continue from{" "}
+            <button className="underline hover:text-text-primary" onClick={() => onSelectTask(sessionFrom)}>
+              {sessionFrom}
+            </button>
+          </div>
+        )}
+        {Object.keys(def.inputs).length > 0 && sub("inputs", json(def.inputs))}
+        {def.gate && (
+          <>
+            {sub("gate prompt", <div className="whitespace-pre-wrap font-sans text-sm">{def.gate.prompt}</div>)}
+            {def.gate.schema !== undefined && sub("gate schema", json(def.gate.schema))}
+          </>
+        )}
+        {def.prompt !== undefined && (
+          <details>
+            <summary className="cursor-pointer text-text-tertiary">prompt</summary>
+            <pre className={pre}>{def.prompt}</pre>
+          </details>
+        )}
+        {def.run && sub("run", json(def.run))}
+        {def.outputSchema !== undefined && sub("outputSchema", json(def.outputSchema))}
+        {def.when && def.when.length > 0 && (
+          <div>
+            <div className="text-text-tertiary">when (all must hold)</div>
+            {def.when.map((c) => (
+              <div key={clauseText(c)}>{clauseText(c)}</div>
+            ))}
+          </div>
+        )}
+        {def.loop && (
+          <div>
+            loop: back to {def.loop.to}, max {def.loop.maxVisits} visits
+          </div>
+        )}
+        {exit && (
+          <div>
+            exit branch of loop {exit.from} → {exit.to}
+          </div>
+        )}
+      </div>
+    </details>
   );
 }
