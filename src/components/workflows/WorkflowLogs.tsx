@@ -156,6 +156,7 @@ export function WorkflowLogs({ taskRunId }: { taskRunId: string | null }) {
         {records.length === 0 && !error && (
           <li className="text-text-tertiary italic">No transcript records yet.</li>
         )}
+        {/* Index keys: grouping only appends or extends the last item, so open/closed state survives live appends. */}
         {items.map((item, i) => (
           <li key={i} className="border-b border-border py-2 last:border-0">
             <div className="flex gap-2">
