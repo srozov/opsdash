@@ -340,8 +340,8 @@ function Definition({
         {def.when && def.when.length > 0 && (
           <div>
             <div className="text-text-tertiary">when (all must hold)</div>
-            {def.when.map((c) => (
-              <div key={clauseText(c)}>{clauseText(c)}</div>
+            {def.when.map((c, i) => (
+              <div key={i}>{clauseText(c)}</div>
             ))}
           </div>
         )}
