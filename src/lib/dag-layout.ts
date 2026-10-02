@@ -10,6 +10,7 @@ import type {
   WhenClause,
 } from "../dagmar-types.ts";
 import { formatDuration } from "../format.ts";
+import { PENDING_LABEL, pendingForAttempt } from "./pending.ts";
 
 // dagre rankdir TB, nodesep 40, ranksep 80. Positions come back centered,
 // offset to top-left for React Flow. Only `dependsOn` edges are laid out (they
@@ -53,13 +54,6 @@ export interface FlowEdgeData {
   loop: boolean;
   [key: string]: unknown;
 }
-
-const PENDING_LABEL: Record<Interaction["kind"], string> = {
-  gate: "decision",
-  turn: "reply",
-  permission: "permission",
-  input: "input",
-};
 
 const showValue = (v: Json): string => (typeof v === "string" ? v : JSON.stringify(v));
 
@@ -120,10 +114,7 @@ export function buildFlow(
     const { kind, executor } = nodeKind(id, def, executors);
     const runTask = run?.tasks[id];
     const latest = runTask?.attempts[runTask.attempts.length - 1];
-    const pendingInteraction =
-      run && latest
-        ? interactions.find((i) => i.workflowRunId === run.id && i.taskRunId === latest.id)
-        : undefined;
+    const pendingInteraction = run ? pendingForAttempt(interactions, run.id, latest?.id) : undefined;
     const data: ExecutionNodeData = {
       taskId: id,
       kind,

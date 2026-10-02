@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import type { Attempt, ExecutorSummary, Interaction, Json, RunView, TaskDef, Workflow } from "../../dagmar-types.ts";
 import { useDagmar } from "../../dagmar/DagmarProvider.tsx";
 import { formatDuration, formatTime, shortId } from "../../format.ts";
+import { gateRequest, turnMessage } from "../../lib/pending.ts";
 import { clauseText, exitBranchOf, stateNotes } from "../../lib/task-notes.ts";
 import { StatusBadge } from "../ui/StatusBadge.tsx";
 import { Button } from "../ui/Button.tsx";
@@ -203,9 +204,11 @@ function AttemptDetail({
               <div className="font-mono text-xs">
                 <StatusBadge state={i.kind} /> {i.method}
               </div>
-              <pre className="mt-1 overflow-x-auto rounded border border-border bg-surface-inset p-2 font-mono text-[11px] whitespace-pre-wrap break-words">
-                {JSON.stringify(i.request, null, 2)}
-              </pre>
+              {i.kind === "gate" || i.kind === "turn" ? (
+                <HumanRequest interaction={i} />
+              ) : (
+                <pre className={pre}>{JSON.stringify(i.request, null, 2)}</pre>
+              )}
               {i.kind === "permission" ? (
                 <div className="mt-2 flex flex-wrap gap-2">
                   {permissionOptions(i.request).map((o) => (
@@ -257,16 +260,43 @@ function AttemptDetail({
                     </Button>
                   </div>
                 </div>
-              ) : (
-                // turn/gate answers are not a JSON object; no control until they are supported.
-                <p className="mt-2 text-xs text-text-tertiary italic">
-                  Answering {i.kind} interactions is not supported here yet.
-                </p>
-              )}
+              ) : null}
             </div>
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// gate/turn requests are display only: their answers are not the elicitation
+// shape, so no control is offered (plan D6, decided in M5).
+function HumanRequest({ interaction }: { interaction: Interaction }) {
+  if (interaction.kind === "gate") {
+    const gate = gateRequest(interaction.request);
+    if (!gate) return <UnexpectedRequest interaction={interaction} />;
+    return (
+      <div className="mt-1 space-y-1">
+        <p className="text-sm whitespace-pre-wrap">{gate.prompt}</p>
+        {gate.schema !== undefined && (
+          <>
+            <div className="text-xs text-text-tertiary">Answer schema</div>
+            <pre className={pre}>{JSON.stringify(gate.schema, null, 2)}</pre>
+          </>
+        )}
+      </div>
+    );
+  }
+  const message = turnMessage(interaction.request);
+  if (message === null) return <UnexpectedRequest interaction={interaction} />;
+  return <p className="mt-1 text-sm whitespace-pre-wrap">{message}</p>;
+}
+
+function UnexpectedRequest({ interaction }: { interaction: Interaction }) {
+  return (
+    <div className="mt-1">
+      <div className="text-xs text-error">Unexpected {interaction.kind} request shape.</div>
+      <pre className={pre}>{JSON.stringify(interaction.request, null, 2)}</pre>
     </div>
   );
 }
