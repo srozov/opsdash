@@ -7,6 +7,7 @@ import {
   rangeCutoff,
   type DateRange,
 } from "../lib/runs.ts";
+import { sortPendingFirst } from "../lib/pending.ts";
 import { StatusSummaryBar } from "../components/dashboard/StatusSummaryBar.tsx";
 import { WorkflowRunCard } from "../components/dashboard/WorkflowRunCard.tsx";
 import { WorkflowHistoryTable } from "../components/dashboard/WorkflowHistoryTable.tsx";
@@ -16,7 +17,7 @@ import { useNow } from "../lib/useNow.ts";
 // Archon "Mission Control": status summary bar, an Active Workflows card grid,
 // and a History table with client-side pagination.
 export function DashboardPage() {
-  const { runs, runsError } = useDagmar();
+  const { runs, runsError, interactions } = useDagmar();
   useNow(1000);
 
   const [filter, setFilter] = useState("all");
@@ -43,7 +44,10 @@ export function DashboardPage() {
     });
   }, [runs, filter, range, search]);
 
-  const active = filtered.filter((r) => ACTIVE_STATUSES.includes(r.status));
+  const active = sortPendingFirst(
+    filtered.filter((r) => ACTIVE_STATUSES.includes(r.status)),
+    interactions,
+  );
   const history = filtered.filter((r) => HISTORY_STATUSES.includes(r.status));
   const pageCount = Math.max(1, Math.ceil(history.length / pageSize));
   const clampedPage = Math.min(page, pageCount - 1);
