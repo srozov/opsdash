@@ -1,0 +1,224 @@
+[
+  {
+    "type": "lifecycle",
+    "direction": "internal",
+    "event": "attempt_started",
+    "timestamp": "2026-09-29T21:34:42.344Z"
+  },
+  {
+    "type": "lifecycle",
+    "direction": "internal",
+    "event": "acp_process_started",
+    "data": {
+      "pid": 546696
+    },
+    "timestamp": "2026-09-29T21:34:42.347Z"
+  },
+  {
+    "type": "acp",
+    "direction": "to_executor",
+    "message": {
+      "jsonrpc": "2.0",
+      "id": 0,
+      "method": "initialize",
+      "params": {
+        "protocolVersion": 1,
+        "clientCapabilities": {
+          "elicitation": {
+            "form": {}
+          }
+        },
+        "clientInfo": {
+          "name": "dagmar",
+          "version": "0.0.0"
+        }
+      }
+    },
+    "timestamp": "2026-09-29T21:34:42.348Z"
+  },
+  {
+    "type": "acp",
+    "direction": "from_executor",
+    "message": {
+      "jsonrpc": "2.0",
+      "id": 0,
+      "result": {
+        "protocolVersion": 1,
+        "agentCapabilities": {
+          "loadSession": true
+        }
+      }
+    },
+    "timestamp": "2026-09-29T21:34:42.387Z"
+  },
+  {
+    "type": "acp",
+    "direction": "to_executor",
+    "message": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "session/load",
+      "params": {
+        "sessionId": "fake-546660-1790717681869",
+        "cwd": "/tmp/opsdash-t6-fixture/target",
+        "mcpServers": []
+      }
+    },
+    "timestamp": "2026-09-29T21:34:42.388Z"
+  },
+  {
+    "type": "acp",
+    "direction": "from_executor",
+    "message": {
+      "jsonrpc": "2.0",
+      "method": "session/update",
+      "params": {
+        "sessionId": "fake-546660-1790717681869",
+        "update": {
+          "sessionUpdate": "user_message_chunk",
+          "content": {
+            "type": "text",
+            "text": "Earlier prompt (replayed)."
+          }
+        }
+      }
+    },
+    "timestamp": "2026-09-29T21:34:42.391Z"
+  },
+  {
+    "type": "acp",
+    "direction": "from_executor",
+    "message": {
+      "jsonrpc": "2.0",
+      "method": "session/update",
+      "params": {
+        "sessionId": "fake-546660-1790717681869",
+        "update": {
+          "sessionUpdate": "agent_message_chunk",
+          "content": {
+            "type": "text",
+            "text": "Earlier answer (replayed)."
+          }
+        }
+      }
+    },
+    "timestamp": "2026-09-29T21:34:42.393Z"
+  },
+  {
+    "type": "acp",
+    "direction": "from_executor",
+    "message": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {}
+    },
+    "timestamp": "2026-09-29T21:34:42.394Z"
+  },
+  {
+    "type": "acp",
+    "direction": "to_executor",
+    "message": {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "method": "session/prompt",
+      "params": {
+        "sessionId": "fake-546660-1790717681869",
+        "prompt": [
+          {
+            "type": "text",
+            "text": "Verification failed; the report is in the inputs. Fix the change so the checks pass.\n\n\nInputs:\n{\"report\":{\"passed\":false,\"exitCode\":0,\"seeded\":true,\"summary\":\"\\n> t6-target@ test /tmp/opsdash-t6-fixture/target\\n> node -e \\\"\\\"\\n\\n\"}}\n\nRespond with exactly one JSON object and no surrounding prose or Markdown. The object must contain exactly three fields: \"outcome\" (\"completed\" or \"blocked\"), \"message\" (a non-empty string), and \"output\" (any JSON value)."
+          }
+        ]
+      }
+    },
+    "timestamp": "2026-09-29T21:34:42.396Z"
+  },
+  {
+    "type": "acp",
+    "direction": "from_executor",
+    "message": {
+      "jsonrpc": "2.0",
+      "method": "session/update",
+      "params": {
+        "sessionId": "fake-546660-1790717681869",
+        "update": {
+          "sessionUpdate": "agent_thought_chunk",
+          "content": {
+            "type": "text",
+            "text": "Reading the report."
+          }
+        }
+      }
+    },
+    "timestamp": "2026-09-29T21:34:42.400Z"
+  },
+  {
+    "type": "acp",
+    "direction": "from_executor",
+    "message": {
+      "jsonrpc": "2.0",
+      "method": "session/update",
+      "params": {
+        "sessionId": "fake-546660-1790717681869",
+        "update": {
+          "sessionUpdate": "agent_message_chunk",
+          "content": {
+            "type": "text",
+            "text": "{\"outcome\":\"completed\",\"message\":\"fix"
+          }
+        }
+      }
+    },
+    "timestamp": "2026-09-29T21:34:42.401Z"
+  },
+  {
+    "type": "acp",
+    "direction": "from_executor",
+    "message": {
+      "jsonrpc": "2.0",
+      "method": "session/update",
+      "params": {
+        "sessionId": "fake-546660-1790717681869",
+        "update": {
+          "sessionUpdate": "agent_message_chunk",
+          "content": {
+            "type": "text",
+            "text": "up applied\",\"output\":{\"fixed\":true}}"
+          }
+        }
+      }
+    },
+    "timestamp": "2026-09-29T21:34:42.402Z"
+  },
+  {
+    "type": "acp",
+    "direction": "from_executor",
+    "message": {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "result": {
+        "stopReason": "end_turn"
+      }
+    },
+    "timestamp": "2026-09-29T21:34:42.402Z"
+  },
+  {
+    "type": "lifecycle",
+    "direction": "internal",
+    "event": "acp_turn_completed",
+    "data": {
+      "stopReason": "end_turn"
+    },
+    "timestamp": "2026-09-29T21:34:42.403Z"
+  },
+  {
+    "type": "lifecycle",
+    "direction": "internal",
+    "event": "acp_process_exited",
+    "data": {
+      "code": null,
+      "signal": "SIGTERM"
+    },
+    "timestamp": "2026-09-29T21:34:42.407Z"
+  }
+]
