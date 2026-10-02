@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import type { RunSummary } from "../../dagmar-types.ts";
 import { useDagmar, withDagmarQuery } from "../../dagmar/DagmarProvider.tsx";
 import { formatDuration, formatTime, shortId } from "../../format.ts";
+import { runPendingHints } from "../../lib/pending.ts";
 import { useNow } from "../../lib/useNow.ts";
 import { StatusBadge } from "../ui/StatusBadge.tsx";
 import { Button } from "../ui/Button.tsx";
@@ -11,7 +12,7 @@ import { Button } from "../ui/Button.tsx";
 // timing, and inline lifecycle actions. Clicking opens the execution view.
 export function WorkflowRunCard({ run }: { run: RunSummary }) {
   const navigate = useNavigate();
-  const { cancelRun, resumeRun, connected } = useDagmar();
+  const { cancelRun, resumeRun, interactions, connected } = useDagmar();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   useNow();
@@ -28,6 +29,7 @@ export function WorkflowRunCard({ run }: { run: RunSummary }) {
     }
   };
 
+  const hints = runPendingHints(interactions, run.id);
   const active = run.status === "running" || run.status === "waiting";
   const blocked = run.status === "blocked";
 
@@ -51,6 +53,16 @@ export function WorkflowRunCard({ run }: { run: RunSummary }) {
         <span>start {formatTime(run.startedAt)}</span>
         <span>updated {formatTime(run.updatedAt)}</span>
       </div>
+
+      {hints.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {hints.map((h) => (
+            <span key={h} className="animate-pulse rounded-full bg-warning/20 px-2 py-0.5 font-mono text-[10px] text-warning">
+              {h}
+            </span>
+          ))}
+        </div>
+      )}
 
       {(active || blocked) && (
         <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
