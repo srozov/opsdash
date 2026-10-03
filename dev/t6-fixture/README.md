@@ -16,7 +16,8 @@ $D pending                                                   # the gate, once re
 $D answer <interaction-id> --json '{"decision":"approve"}'   # gate; a turn takes a raw JSON string
 ```
 
-OpsDash: open `?dagmar=7351`. The port needs its own tailnet-only `tailscale serve` mapping
+OpsDash: open `?dagmar=7351`. The gate and turns can also be answered there (node inspector or the
+dashboard card); a gate answer is confirmed before it is sent. The port needs its own tailnet-only `tailscale serve` mapping
 (`tailscale serve --bg --https=7351 http://127.0.0.1:7351`). Dagmar's RPC has no authentication, so
 that mapping exposes start/cancel/answer to every tailnet device; ask before running it.
 
